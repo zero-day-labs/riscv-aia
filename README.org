@@ -1,0 +1,74 @@
+#+TITLE: Advanced Interrupt Architecture Implementation
+#+AUTHOR: Francisco Marques
+#+EMAIL: fmarques_00@protonmail.com
+#+STARTUP: show2levels
+
+* Table of Content :TOC:
+- [[#disclaimer][Disclaimer]]
+- [[#about-risc-v-aia][About RISC-V AIA]]
+- [[#repository-structure][Repository Structure]]
+  - [[#documentation-doc][Documentation (doc)]]
+  - [[#rtl][RTL]]
+  - [[#tests][Tests]]
+- [[#tools-and-versions][Tools and Versions]]
+- [[#status][Status]]
+
+* Disclaimer
+This is a work in progress.
+
+* About RISC-V AIA
+One of the most recent features to be added to the RISC-V ISA is the new interrupt controller, Advanced Interrupt Architecture (AIA), which will replace the current one, the Platform-Level Interrupt Controller (PLIC). The RISC-V PLIC is widely used across RISC-V platforms. However, it reveals a lot of limitations for scalability, due to some flaws at design level, such as area consumption and privilege levels isolation. In addition to that, the PLIC does not support either virtualization or a mechanism to delivery interrupts through Message Signalled Interrupts (MSIs). AIA specification covers a new interrupt controller to mitigate these limitations.
+
+AIA specification consists in:
+1. an extension to the RISC-V privilege specification (Smaia and Ssaia);
+2. two standard interrupt controllers for RISC-V systems:
+   a. Advanced Platform-Level Interrupt Controller (APLIC)
+   b. Incoming Message-Signalled Interrupt Controller (IMSIC);
+3. requirements on other system components (IOMMU).
+
+The Figure 1 shows the current interrupt controller model. It can be observed that wired sources are connected to the
+PLIC, which for instance will be in charge of determining the interrupt prioritization and notify the CPU, by wire,
+when an interrupt is available.
+
+#+NAME: fig:PLIC-SoC
+#+ATTR_LATEX: :width 500\textwidth
+#+CAPTION: Current interrupt controller model.
+[[./doc/PLIC-SoC.png]]
+
+Figure 2 illustrate the new interrupt controller model, where besides the wired interrupts also the MSI are supported.
+#+NAME: fig:AIA-SoC
+#+ATTR_LATEX: :width 500\textwidth
+#+CAPTION: AIA interrupt controller model.
+[[./doc/AIA-SoC.png]]
+* Repository Structure
+** Documentation (doc)
+In the documentation folder you can find information about IP APLIC and IMSIC. How to integrate IP into a RISC-V platform, the interfacing of the hardware blocks, and how they are made up. In case the IP can be automatically generated, it is also documented which arguments the python script is waiting for.
+** RTL
+The rtl folder contains all the modules that make up each of the IPs.
+** Tests
+Under the tests folder, you can find unit tests of IPs intergration. The tests can easily be replicated by doing make inside the desired test.
+* Tools and Versions
+
+|--------------------------------------------------+---------|
+| Package/Tool                                     | Version |
+|--------------------------------------------------+---------|
+| (Cocotb)[https://www.cocotb.org/]                | 1.7.1   |
+| (Verilator)[https://www.veripool.org/verilator/] | 4.106   |
+| perl                                             | ---     |
+| python3                                          | ---     |
+| autoconf                                         | ---     |
+| g++                                              | ---     |
+| flex                                             | ---     |
+| ccache                                           | ---     |
+| bison                                            | 3.5.1   |
+|--------------------------------------------------+---------|
+* Status
+
+|-----------------+---------------+-------------------------------------------|
+| IP/Script       | Status        | Notes                                     |
+|-----------------+---------------+-------------------------------------------|
+| APLIC           | WiP (Working) | Tested in CVA6 core                       |
+| APLIC generator | WiP           | ----                                      |
+| IMSIC           | WiP (Working) | Tested in CVA6 core w/ M, S, and VS-files |
+| IMSIC generator | WiP           | ----                                      |
+|-----------------+---------------+-------------------------------------------|
