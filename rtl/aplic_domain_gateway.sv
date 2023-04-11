@@ -4,7 +4,7 @@
 * Date: 7/10/2022 
 * Author: F.Marques <fmarques_00@protonmail.com>
 *
-* Description: The APLIC domian gateway is the module encharge of
+* Description: The APLIC domain gateway is the module encharge of
 *              receiving the current setip array, and the new setip 
 *              and follow the section 4.6 of AIA spec to determine the
 *              new valid setip array value.

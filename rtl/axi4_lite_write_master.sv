@@ -1,4 +1,12 @@
-
+/** 
+*   Name: AXI4 Lite Write Master
+*   Date: 2023-03-23
+*   Author: F.Marques <fmarques_00@protonmail.com>
+* 
+*   Description: Implements a basi axi4 lite master with write only capabilities
+*               
+*   Notes: 1. This module will be replaced in the future;
+*/ 
 module axi_lite_write_master #(
     parameter int unsigned AXI_ADDR_WIDTH = 64,
     parameter int unsigned AXI_DATA_WIDTH = 64

@@ -1,4 +1,11 @@
-
+/** 
+*   Name: IMSIC register map (generic)
+*   Date: 2023-03-23
+*   Author: F.Marques <fmarques_00@protonmail.com>
+* 
+*   Description: Implements a generic IMSIC register file
+*               
+*/ 
 module imsic_regmap #(
     parameter int                         NR_SRC_LEN        = 32,
     parameter int unsigned                AXI_ADDR_WIDTH    = 64,

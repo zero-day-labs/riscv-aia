@@ -1,8 +1,21 @@
-/** 
-    4.5.3 " For APLICs that support MSI delivery mode, it is recommended, 
-    if feasible, that the APLIC internally hardwire the physical addresses 
-    for all target IMSICs, putting those addresses beyond the reach of 
-    software to change"
+/**
+*
+* Name: APLIC Domain Register Control
+* Date: 11/10/2022 
+* Author: F.Marques <fmarques_00@protonmail.com>
+*
+* Description: This module can have two possible implementations, depending on the 
+*              chosen delivery mode. Therefore, if the delivery mode is direct, the 
+*              notifier will implement a basic algorithm to detect the highest-priority 
+*              interrupt that is pending and enabled. If the chosen delivery mode is MSI, 
+*              the notifier does not make any judgment regarding the priority of an interrupt 
+*              (which is done in the IMSIC and RISC-V core), limiting itself to forwarding 
+*              an interrupt as soon as it becomes pending and enabled.
+*
+* NOTE:        4.5.3 " For APLICs that support MSI delivery mode, it is recommended, 
+*              if feasible, that the APLIC internally hardwire the physical addresses 
+*              for all target IMSICs, putting those addresses beyond the reach of 
+*              software to change"
 */
 module aplic_domain_notifier #(
     parameter int                                   NR_SRC          = 32,

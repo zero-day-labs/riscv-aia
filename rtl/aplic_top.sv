@@ -1,4 +1,11 @@
-// TODO: ter apenas uma interface de config e uma interface de MSI mode
+/** 
+*   Name: APLIC domain register map (generic)
+*   Date: 2022-10-18 18:08:30.001661
+*   Author: F.Marques <fmarques_00@protonmail.com>
+* 
+*   Description: Top module for APLIC IP. Connects the three modules 
+                 that comprise the IP - Notifier, gateway and register controller.
+*/ 
 module aplic_top #(
    parameter                               MODE       = "DIRECT",
    /** Number of external interrupts */

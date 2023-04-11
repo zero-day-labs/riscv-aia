@@ -1,7 +1,11 @@
-// TODO: There is a bug here. The intp 0 should be always 0.
-//       So, eip and eie should have +1 bit...
-//       To be reviewed soon
-
+/** 
+*   Name: IMSIC top
+*   Date: 2023-03-23
+*   Author: F.Marques <fmarques_00@protonmail.com>
+* 
+*   Description: Implements the IMSIC IP; 
+*               
+*/ 
 module imsic_top #(
    parameter int                                    NR_SRC           = 32   ,
    parameter int                                    MIN_PRIO         = 6    ,
