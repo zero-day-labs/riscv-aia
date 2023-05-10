@@ -108,7 +108,7 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     // signals from AXI 4 Lite
     logic [AXI_ADDR_WIDTH-1:0] addr_i;
     logic [AXI_DATA_WIDTH-1:0] data_i;
-    logic [10:0]               intp_forwd_id;
+    logic [10:0]               intp_forwd_id_d, intp_forwd_id_q;
     logic                      ready_i;
     logic                      genmsi_sent;
     logic                      axi_busy, axi_busy_q;
@@ -119,10 +119,12 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     always_comb begin : find_highest_pen_en
         ready_i             = '0;
         genmsi_sent         = '0;
+        intp_forwd_id_d     = intp_forwd_id_q;
+
         for (int i = 1 ; i < NR_SRC ; i++) begin
             /** If the interrupt is pending and enabled*/
             if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32] && i_domaincfgIE && !axi_busy_q) begin
-                intp_forwd_id   = i[10:0];
+                intp_forwd_id_d = i[10:0];
                 data_i          = {{64-11{1'b0}}, i_target_q[i][10:0]};
                 addr_i          = IMSIC_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK);
                 ready_i         = 1'b1;
@@ -131,7 +133,7 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
 
         /** Lastly, check if genmsi wants to send a MSI*/
         if (i_genmsi[12] && !axi_busy_q) begin
-            intp_forwd_id   = '0;
+            intp_forwd_id_d = '0;
             data_i          = {32'b0, {21{1'b0}}, i_genmsi[10:0]};
             addr_i          = IMSIC_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i_genmsi[10:0]]} & TARGET_GUEST_IDX_MASK);
             genmsi_sent     = 1'b1;
@@ -142,7 +144,7 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     assign o_genmsi_sent        = genmsi_sent;
     /** the intp is considered forwarded when the axi interface becomes available again */
     assign o_forwarded_valid    = axi_busy_q & ~axi_busy;
-    assign o_intp_forwd_id      = intp_forwd_id;
+    assign o_intp_forwd_id      = intp_forwd_id_q;
     assign o_busy               = axi_busy;
 
     // -----------------------------
@@ -165,9 +167,11 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
 
     always_ff @(  posedge i_clk, negedge ni_rst ) begin
         if (!ni_rst) begin
-            axi_busy_q   <= '0;
+            axi_busy_q      <= '0;
+            intp_forwd_id_q <= '0;
         end else begin
-            axi_busy_q   <= axi_busy;
+            axi_busy_q      <= axi_busy;
+            intp_forwd_id_q <= intp_forwd_id_d;
         end
     end
 
