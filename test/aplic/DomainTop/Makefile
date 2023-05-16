@@ -7,7 +7,7 @@ SIM ?= verilator
 EXTRA_ARGS += --trace --trace-structs
 TOPLEVEL_LANG ?= verilog
 
-AXI_FOLDER = $(PWD)/../../../axi/
+AXI_FOLDER = $(PWD)/../../../vendor/
 TEST_FOLDER = $(currdir) 
 SRC_FOLDER = $(PWD)/../../../rtl/
 

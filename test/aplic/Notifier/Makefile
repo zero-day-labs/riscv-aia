@@ -10,7 +10,7 @@ TOPLEVEL_LANG ?= verilog
 TEST_FOLDER = $(currdir) 
 SRC_FOLDER = $(PWD)/../../../rtl/
 WRAPPER_SRC = $(TEST_FOLDER)./wrap.sv
-AXI_FOLDER = $(PWD)/../../../axi/
+AXI_FOLDER = $(PWD)/../../../vendor/
 
 VERILOG_SOURCES += $(AXI_FOLDER)reg_intf_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_pkg.sv
