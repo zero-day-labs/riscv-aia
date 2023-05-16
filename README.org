@@ -1,53 +1,51 @@
-#+TITLE: Advanced Interrupt Architecture Implementation
+#+TITLE: Advanced Interrupt Architecture IP
 #+AUTHOR: Francisco Marques
 #+EMAIL: fmarques_00@protonmail.com
 #+STARTUP: show2levels
-
-* Table of Content :TOC:
-- [[#disclaimer][Disclaimer]]
-- [[#about-risc-v-aia][About RISC-V AIA]]
-- [[#repository-structure][Repository Structure]]
-  - [[#documentation-doc][Documentation (doc)]]
-  - [[#rtl][RTL]]
-  - [[#tests][Tests]]
-- [[#tools-and-versions][Tools and Versions]]
-- [[#status][Status]]
 
 * Disclaimer
 This is a work in progress.
 
 * About RISC-V AIA
-One of the most recent features to be added to the RISC-V ISA is the new interrupt controller, Advanced Interrupt Architecture (AIA), which will replace the current one, the Platform-Level Interrupt Controller (PLIC). The RISC-V PLIC is widely used across RISC-V platforms. However, it reveals a lot of limitations for scalability, due to some flaws at design level, such as area consumption and privilege levels isolation. In addition to that, the PLIC does not support either virtualization or a mechanism to delivery interrupts through Message Signalled Interrupts (MSIs). AIA specification covers a new interrupt controller to mitigate these limitations.
+Nowadays, the de facto interrupt controller in the RISC-V system is the Platform Level Interrupt Controller (PLIC). However, the PLIC specification, as it is, presents several limitations in terms of scalability and feature-richness. Among these limitations, we highlight: a large amount of physical address space used, and the sharing of M-mode and S-mode global registers, creating a possible security breach. The PLIC does not support interrupts through Message Signal Interrupts (MSI). Also, the Interrupt Request (IRQ) line sensing configuration is not allowed. Lastly, the PLIC does not provide any means to support virtualization.
+
+In response to identified deficiencies in the PLIC, the RISC-V community has undertaken the development of a new interrupt controller specification. The RISC-V Advanced Interrupt Architecture (AIA) is the novel reference specification for interrupt-handling functionality. The specifications were recently ratified and are paving the way for integration in new RISC-V SoC designs.
 
 AIA specification consists in:
-1. an extension to the RISC-V privilege specification (Smaia and Ssaia);
-2. two standard interrupt controllers for RISC-V systems:
+1. An extension to the RISC-V privilege specification (Smaia and Ssaia);
+2. Two standard interrupt controllers for RISC-V systems:
    a. Advanced Platform-Level Interrupt Controller (APLIC)
    b. Incoming Message-Signalled Interrupt Controller (IMSIC);
-3. requirements on other system components (IOMMU).
+3. Requirements on other system components (e.g., IOMMU).
 
-The Figure 1 shows the current interrupt controller model. It can be observed that wired sources are connected to the
+The Figure bellow shows the current interrupt controller model. It can be observed that wired sources are connected to the
 PLIC, which for instance will be in charge of determining the interrupt prioritization and notify the CPU, by wire,
 when an interrupt is available.
 
 #+NAME: fig:PLIC-SoC
-#+ATTR_LATEX: :width 500\textwidth
+#+ATTR_LATEX: :width 200\textwidth
 #+CAPTION: Current interrupt controller model.
 [[./doc/PLIC-SoC.png]]
 
-Figure 2 illustrate the new interrupt controller model, where besides the wired interrupts also the MSI are supported.
+A SoC that implements that implements the AIA specification will look like the Figure bellow. In scenarios where a platform opts not to incorporate an IMSIC, the absence of MSI channels results in the external interrupt controller responsibilities being assumed by the APLIC.
+
 #+NAME: fig:AIA-SoC
-#+ATTR_LATEX: :width 500\textwidth
+#+ATTR_LATEX: :width 200\textwidth
 #+CAPTION: AIA interrupt controller model.
 [[./doc/AIA-SoC.png]]
+
 * Repository Structure
 ** Documentation (doc)
-In the documentation folder you can find information about IP APLIC and IMSIC. How to integrate IP into a RISC-V platform, the interfacing of the hardware blocks, and how they are made up. In case the IP can be automatically generated, it is also documented which arguments the python script is waiting for.
+In the documentation folder you can find information about IP APLIC and IMSIC. How to integrate IP into a RISC-V platform, the interfacing of the hardware blocks, and how they are made up.
+
 ** RTL
 The rtl folder contains all the modules that make up each of the IPs.
+
 ** Tests
 Under the tests folder, you can find unit tests of IPs intergration. The tests can easily be replicated by doing make inside the desired test.
+
 * Tools and Versions
+To run the test make sure you are using the right versions of cocotb and verilator. Currently cocotb only supports Verilator 4.106 (no earlier or later version).
 
 |--------------------------------------------------+---------|
 | Package/Tool                                     | Version |
@@ -62,13 +60,13 @@ Under the tests folder, you can find unit tests of IPs intergration. The tests c
 | ccache                                           | ---     |
 | bison                                            | 3.5.1   |
 |--------------------------------------------------+---------|
+
 * Status
 
-|-----------------+---------------+-------------------------------------------|
-| IP/Script       | Status        | Notes                                     |
-|-----------------+---------------+-------------------------------------------|
-| APLIC           | WiP (Working) | Tested in CVA6 core                       |
-| APLIC generator | WiP           | ----                                      |
-| IMSIC           | WiP (Working) | Tested in CVA6 core w/ M, S, and VS-files |
-| IMSIC generator | WiP           | ----                                      |
-|-----------------+---------------+-------------------------------------------|
+|-------------+--------+-----------------------------------------------------------|
+| AIA Module  | Status | Notes                                                     |
+|-------------+--------+-----------------------------------------------------------|
+| Smaia/Ssaia | WiP    | Major interrupts priority is not configurable in software |
+| APLIC       | WiP    | Validated in the CVA6-based SoC                           |
+| IMSIC       | WiP    | Validated in the CVA6-based SoC w/ M, S, and VS-files     |
+|-------------+--------+-----------------------------------------------------------|
