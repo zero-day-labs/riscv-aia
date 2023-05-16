@@ -36,7 +36,7 @@ A SoC that implements that implements the AIA specification will look like the F
 
 * Repository Structure
 ** Documentation (doc)
-In the documentation folder you can find information about IP APLIC and IMSIC. How to integrate IP into a RISC-V platform, the interfacing of the hardware blocks, and how they are made up.
+In the [documentation](doc/README.md) folder you can find information about APLIC and IMSIC IPs. How to integrate IP into a RISC-V platform, the interfacing of the hardware blocks, and how they are made up.
 
 ** RTL
 The rtl folder contains all the modules that make up each of the IPs.
