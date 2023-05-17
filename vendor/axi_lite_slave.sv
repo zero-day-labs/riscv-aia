@@ -16,13 +16,15 @@
 module axi_lite_interface #(
     parameter int unsigned AXI_ADDR_WIDTH = 64,
     parameter int unsigned AXI_DATA_WIDTH = 64,
-    parameter int unsigned AXI_ID_WIDTH   = 10
+    parameter int unsigned AXI_ID_WIDTH   = 10,
+    parameter type         axi_req_t      = ariane_axi::req_t,
+    parameter type         axi_resp_t     = ariane_axi::resp_t
 ) (
     input logic                               clk_i,    // Clock
     input logic                               rst_ni,   // Asynchronous reset active low
 
-    input  ariane_axi::req_t                  axi_req_i,
-    output ariane_axi::resp_t                 axi_resp_o,
+    input  axi_req_t                          axi_req_i,
+    output axi_resp_t                         axi_resp_o,
 
     output logic [AXI_ADDR_WIDTH-1:0]         address_o,
     output logic                              en_o,        // transaction is valid
@@ -151,4 +153,18 @@ module axi_lite_interface #(
         end
     end
 
+    // ------------------------
+    // Assertions
+    // ------------------------
+    // Listen for illegal transactions
+    //pragma translate_off
+    `ifndef VERILATOR
+    // check that burst length is just one
+    assert property (@(posedge clk_i) axi_req_i.ar_valid |->  ((axi_req_i.ar.len == 8'b0)))
+    else begin $error("AXI Lite does not support bursts larger than 1 or byte length unequal to the native bus size"); $stop(); end
+    // do the same for the write channel
+    assert property (@(posedge clk_i) axi_req_i.aw_valid |->  ((axi_req_i.aw.len == 8'b0)))
+    else begin $error("AXI Lite does not support bursts larger than 1 or byte length unequal to the native bus size"); $stop(); end
+    `endif
+    //pragma translate_on
 endmodule
