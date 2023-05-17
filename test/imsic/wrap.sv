@@ -32,10 +32,10 @@ module imsic_top_wrapper #(
 ariane_axi::req_t                           req;
 ariane_axi::resp_t                          resp;
 
-axi_lite_master_write_only#(
+axi_lite_write_master#(
     .AXI_ADDR_WIDTH     ( AXI_ADDR_WIDTH    ),
     .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH    )
-) axi_lite_master_write_only_i (
+) axi_lite_write_master_i (
     .clk_i              ( i_clk             ),
     .rst_ni             ( ni_rst            ),
     .ready_i            ( ready_i           ),
@@ -50,7 +50,10 @@ axi_lite_master_write_only#(
 imsic_top #(
     .NR_SRC             ( NR_SRC            ),
     .MIN_PRIO           ( MIN_PRIO          ),
-    .NR_INTP_FILES      ( NR_INTP_FILES     )
+    .NR_INTP_FILES      ( NR_INTP_FILES     ),
+    .AXI_ID_WIDTH       ( 4                 ),
+    .axi_req_t          ( ariane_axi::req_t ),
+    .axi_resp_t         ( ariane_axi::resp_t)
 ) i_imsic_top (
     .i_clk              ( i_clk             ),
     .ni_rst             ( ni_rst            ),

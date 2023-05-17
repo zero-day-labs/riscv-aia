@@ -51,16 +51,11 @@ class CIDCs:
 idc = CIDCs()
 
 class CInputs:
-    reg_intf_req_a32_d32_addr_1 = 0
-    reg_intf_req_a32_d32_write_1 = 0
-    reg_intf_req_a32_d32_wdata_1 = 0
-    reg_intf_req_a32_d32_wstrb_1 = 0
-    reg_intf_req_a32_d32_valid_1 = 0
-    reg_intf_req_a32_d32_addr_2 = 0
-    reg_intf_req_a32_d32_write_2 = 0
-    reg_intf_req_a32_d32_wdata_2 = 0
-    reg_intf_req_a32_d32_wstrb_2 = 0
-    reg_intf_req_a32_d32_valid_2 = 0
+    reg_intf_req_a32_d32_addr = 0
+    reg_intf_req_a32_d32_write = 0
+    reg_intf_req_a32_d32_wdata = 0
+    reg_intf_req_a32_d32_wstrb = 0
+    reg_intf_req_a32_d32_valid = 0
     i_irq_sources = 0
     i_priv_lvl                  = 0
     i_vgein                     = 0
@@ -70,12 +65,9 @@ class CInputs:
     i_imsic_claim               = 0
 
 class COutputs:
-    reg_intf_resp_d32_rdata_1 = 0
-    reg_intf_resp_d32_error_1 = 0
-    reg_intf_resp_d32_ready_1 = 0
-    reg_intf_resp_d32_rdata_2 = 0
-    reg_intf_resp_d32_error_2 = 0
-    reg_intf_resp_d32_ready_2 = 0
+    reg_intf_resp_d32_rdata = 0
+    reg_intf_resp_d32_error = 0
+    reg_intf_resp_d32_ready = 0
     o_Xeip_targets = 0
     o_imsic_data                = 0   
     o_xtopei                    = 0
@@ -99,35 +91,35 @@ def read_bit_from_reg(reg, bit_num):
 
 def axi_write_reg(dut, addr, data):
     if (addr >= APLIC_M_BASE):
-        input.reg_intf_req_a32_d32_addr_1 = addr
-        input.reg_intf_req_a32_d32_wdata_1 = data
-        input.reg_intf_req_a32_d32_write_1 = 1 
-        input.reg_intf_req_a32_d32_wstrb_1 = 0 
-        input.reg_intf_req_a32_d32_valid_1 = 1
+        input.reg_intf_req_a32_d32_addr = addr
+        input.reg_intf_req_a32_d32_wdata = data
+        input.reg_intf_req_a32_d32_write = 1 
+        input.reg_intf_req_a32_d32_wstrb = 0 
+        input.reg_intf_req_a32_d32_valid = 1
 
-        dut.reg_intf_req_a32_d32_addr_1.value = input.reg_intf_req_a32_d32_addr_1
-        dut.reg_intf_req_a32_d32_wdata_1.value = input.reg_intf_req_a32_d32_wdata_1
-        dut.reg_intf_req_a32_d32_write_1.value = input.reg_intf_req_a32_d32_write_1
-        dut.reg_intf_req_a32_d32_wstrb_1.value = input.reg_intf_req_a32_d32_wstrb_1
-        dut.reg_intf_req_a32_d32_valid_1.value = input.reg_intf_req_a32_d32_valid_1
+        dut.reg_intf_req_a32_d32_addr.value = input.reg_intf_req_a32_d32_addr
+        dut.reg_intf_req_a32_d32_wdata.value = input.reg_intf_req_a32_d32_wdata
+        dut.reg_intf_req_a32_d32_write.value = input.reg_intf_req_a32_d32_write
+        dut.reg_intf_req_a32_d32_wstrb.value = input.reg_intf_req_a32_d32_wstrb
+        dut.reg_intf_req_a32_d32_valid.value = input.reg_intf_req_a32_d32_valid
 
 def axi_read_reg(dut, addr):
     if (addr >= APLIC_M_BASE):
-        input.reg_intf_req_a32_d32_addr_1 = addr
-        input.reg_intf_req_a32_d32_valid_1 = 1
-        input.reg_intf_req_a32_d32_write_1 = 0
+        input.reg_intf_req_a32_d32_addr = addr
+        input.reg_intf_req_a32_d32_valid = 1
+        input.reg_intf_req_a32_d32_write = 0
 
-        dut.reg_intf_req_a32_d32_addr_1.value = input.reg_intf_req_a32_d32_addr_1
-        dut.reg_intf_req_a32_d32_write_1.value = input.reg_intf_req_a32_d32_write_1
-        dut.reg_intf_req_a32_d32_valid_1.value = input.reg_intf_req_a32_d32_valid_1 
-        outputs.reg_intf_resp_d32_rdata_1 = dut.reg_intf_resp_d32_rdata_1.value
-        return outputs.reg_intf_resp_d32_rdata_1 
+        dut.reg_intf_req_a32_d32_addr.value = input.reg_intf_req_a32_d32_addr
+        dut.reg_intf_req_a32_d32_write.value = input.reg_intf_req_a32_d32_write
+        dut.reg_intf_req_a32_d32_valid.value = input.reg_intf_req_a32_d32_valid 
+        outputs.reg_intf_resp_d32_rdata = dut.reg_intf_resp_d32_rdata.value
+        return outputs.reg_intf_resp_d32_rdata 
     
 def axi_disable_read(dut):
-    input.reg_intf_req_a32_d32_valid_1 = 0
-    input.reg_intf_req_a32_d32_write_1 = 1
-    dut.reg_intf_req_a32_d32_valid_1.value = input.reg_intf_req_a32_d32_valid_1
-    dut.reg_intf_req_a32_d32_write_1.value = input.reg_intf_req_a32_d32_write_1
+    input.reg_intf_req_a32_d32_valid = 0
+    input.reg_intf_req_a32_d32_write = 1
+    dut.reg_intf_req_a32_d32_valid.value = input.reg_intf_req_a32_d32_valid
+    dut.reg_intf_req_a32_d32_write.value = input.reg_intf_req_a32_d32_write
 
 def imsic_write_reg(dut, addr, data, priv_lvl, vgein = 0):
     input.i_priv_lvl = priv_lvl

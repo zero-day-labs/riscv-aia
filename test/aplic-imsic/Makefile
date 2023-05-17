@@ -15,12 +15,6 @@ VERILOG_SOURCES += $(AXI_FOLDER)reg_intf_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)ariane_axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_lite_slave.sv
-VERILOG_SOURCES += $(AXI_FOLDER)rr_arb_tree.sv
-VERILOG_SOURCES += $(AXI_FOLDER)stream_arbiter_flushable.sv
-VERILOG_SOURCES += $(AXI_FOLDER)stream_arbiter.sv
-VERILOG_SOURCES += $(AXI_FOLDER)stream_mux.sv
-VERILOG_SOURCES += $(AXI_FOLDER)stream_demux.sv
-VERILOG_SOURCES += $(AXI_FOLDER)fifo_v3.sv
 
 VERILOG_SOURCES += $(SRC_FOLDER)/aplic_defines.svh
 VERILOG_SOURCES += $(SRC_FOLDER)/axi4_lite_write_master.sv
