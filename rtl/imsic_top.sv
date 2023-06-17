@@ -133,7 +133,7 @@ logic [NR_INTP_FILES-1:0]                           xeip_targets;
                     eithreshold_d[select_intp_file_i] = i_imsic_data[NR_SRC_LEN-1:0];
                 end
                 [EIP0_OFF:EIP63_OFF]:begin
-                    if((i_imsic_addr-EIE0_OFF) <= NR_REG-1) begin
+                    if((i_imsic_addr-EIP0_OFF) <= NR_REG-1) begin
                         eip_d[(i_imsic_addr-EIP0_OFF)+(select_intp_file_i*NR_REG)] = i_imsic_data[NR_BITS_SRC-1:0];
                     end
                 end
@@ -153,7 +153,7 @@ logic [NR_INTP_FILES-1:0]                           xeip_targets;
                     o_imsic_data = {{32-NR_SRC_LEN{1'b0}}, eithreshold_q[select_intp_file_i]};
                 end
                 [EIP0_OFF:EIP63_OFF]:begin
-                    if((i_imsic_addr-EIE0_OFF) <= NR_REG-1) begin
+                    if((i_imsic_addr-EIP0_OFF) <= NR_REG-1) begin
                         o_imsic_data = {{32-NR_BITS_SRC{1'b0}}, 
                                         eip_q[(i_imsic_addr-EIP0_OFF)+(select_intp_file_i*NR_REG)]};
                     end
