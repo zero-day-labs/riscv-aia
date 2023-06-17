@@ -27,7 +27,7 @@ when an interrupt is available.
 #+CAPTION: Current interrupt controller model.
 [[./doc/PLIC-SoC.png]]
 
-A SoC that implements that implements the AIA specification will look like the Figure bellow. In scenarios where a platform opts not to incorporate an IMSIC, the absence of MSI channels results in the external interrupt controller responsibilities being assumed by the APLIC.
+A SoC that implements the AIA specification will look like the Figure bellow. In scenarios where a platform opts not to incorporate an IMSIC, the absence of MSI channels results in the external interrupt controller responsibilities being assumed by the APLIC.
 
 #+NAME: fig:AIA-SoC
 #+ATTR_LATEX: :width 200\textwidth
