@@ -99,29 +99,20 @@ ariane_axi::req_t               axi_req_m_domain;
 ariane_axi::resp_t              axi_resp_m_domain;
 ariane_axi::req_t               axi_req_s_domain;
 ariane_axi::resp_t              axi_resp_s_domain;
-logic                           axi_1_busy, axi_1_busy_q;
-
-always_ff @( posedge i_clk or negedge ni_rst) begin
-   if(!ni_rst)begin
-      axi_1_busy_q <= '0;
-   end else begin
-      axi_1_busy_q <= axi_1_busy;
-   end
-end
+logic                           axi_1_busy;
 
 always_comb begin : basic_interconnect
-   if (~(axi_1_busy_q || axi_1_busy ) ) begin
-      o_req.aw   = axi_req_s_domain.aw ;
+   if (~axi_1_busy) begin
+      o_req.aw        = axi_req_s_domain.aw ;
       o_req.aw_valid  = axi_req_s_domain.aw_valid;
-      o_req.w    = axi_req_s_domain.w  ;
+      o_req.w         = axi_req_s_domain.w  ;
       o_req.w_valid   = axi_req_s_domain.w_valid ;
       o_req.b_ready   = axi_req_s_domain.b_ready ;
-
       axi_resp_s_domain.w_ready  = i_resp.w_ready;
    end else begin
-      o_req.aw          = axi_req_m_domain.aw ;
+      o_req.aw        = axi_req_m_domain.aw ;
       o_req.aw_valid  = axi_req_m_domain.aw_valid;
-      o_req.w    = axi_req_m_domain.w  ;
+      o_req.w         = axi_req_m_domain.w  ;
       o_req.w_valid   = axi_req_m_domain.w_valid ;
       o_req.b_ready   = axi_req_m_domain.b_ready ;
       axi_resp_m_domain.w_ready  = i_resp.w_ready;
