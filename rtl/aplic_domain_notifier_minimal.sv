@@ -83,7 +83,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         intp_prio           = '0;
         prev_higher_prio    = '1;
         /** outputs reset values */
-        o_Xeip_targets      = '0;
         o_topi_sugg         = '0;
         o_topi_update       = '0;
 
