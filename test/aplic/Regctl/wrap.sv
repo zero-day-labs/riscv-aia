@@ -109,7 +109,9 @@ aplic_domain_regctl #(
     .MIN_PRIO(MIN_PRIO),  
     .IPRIOLEN(IPRIOLEN),
     .NR_IDCs(NR_IDCs),
-    .APLIC(APLIC) 
+    .APLIC(APLIC),
+    .reg_req_t              ( reg_intf::reg_intf_req_a32_d32    ),
+    .reg_rsp_t              ( reg_intf::reg_intf_resp_d32       )
 ) i_aplic_domain_regctl (
     .i_clk(clk_i),
     .ni_rst(rst_ni),
