@@ -477,6 +477,14 @@ always_comb begin
           o_sourcecfg[S_DOMAIN][30][10:0]     = i_req.wdata[10:0];
           o_sourcecfg_we[S_DOMAIN][30]      = 1'b1;
         end
+        DOMAIN_M_ADDR + 32'h7c: begin
+          o_sourcecfg[M_DOMAIN][31][10:0]     = i_req.wdata[10:0];
+          o_sourcecfg_we[M_DOMAIN][31]      = 1'b1;
+        end
+        DOMAIN_S_ADDR + 32'h7c: begin
+          o_sourcecfg[S_DOMAIN][31][10:0]     = i_req.wdata[10:0];
+          o_sourcecfg_we[S_DOMAIN][31]      = 1'b1;
+        end
         DOMAIN_M_ADDR + 32'h1bc0: begin
           o_mmsiaddrcfg[0][31:0]     = i_req.wdata[31:0];
           o_mmsiaddrcfg_we[0]      = 1'b1;
@@ -821,6 +829,14 @@ always_comb begin
           o_target[S_DOMAIN][30][31:0]     = i_req.wdata[31:0];
           o_target_we[S_DOMAIN][30]      = 1'b1;
         end
+        DOMAIN_M_ADDR + 32'h307c: begin
+          o_target[M_DOMAIN][31][31:0]     = i_req.wdata[31:0];
+          o_target_we[M_DOMAIN][31]      = 1'b1;
+        end
+        DOMAIN_S_ADDR + 32'h307c: begin
+          o_target[S_DOMAIN][31][31:0]     = i_req.wdata[31:0];
+          o_target_we[S_DOMAIN][31]      = 1'b1;
+        end
         DOMAIN_M_ADDR + 32'h4000: begin
           o_idelivery[M_DOMAIN][0][0:0]     = i_req.wdata[0:0];
           o_idelivery_we[M_DOMAIN][0]      = 1'b1;
@@ -1096,6 +1112,14 @@ always_comb begin
         DOMAIN_S_ADDR + 32'h78: begin
           o_resp.rdata[10:0]     = i_sourcecfg[S_DOMAIN][30][10:0];
           o_sourcecfg_re[S_DOMAIN][30]      = 1'b1;
+        end
+        DOMAIN_M_ADDR + 32'h7c: begin
+          o_resp.rdata[10:0]     = i_sourcecfg[M_DOMAIN][31][10:0];
+          o_sourcecfg_re[M_DOMAIN][31]      = 1'b1;
+        end
+        DOMAIN_S_ADDR + 32'h7c: begin
+          o_resp.rdata[10:0]     = i_sourcecfg[S_DOMAIN][31][10:0];
+          o_sourcecfg_re[S_DOMAIN][31]      = 1'b1;
         end
         DOMAIN_M_ADDR + 32'h1bc0: begin
           o_resp.rdata[31:0]     = i_mmsiaddrcfg[0][31:0];
@@ -1440,6 +1464,14 @@ always_comb begin
         DOMAIN_S_ADDR + 32'h3078: begin
           o_resp.rdata[31:0]     = i_target[S_DOMAIN][30][31:0];
           o_target_re[S_DOMAIN][30]      = 1'b1;
+        end
+        DOMAIN_M_ADDR + 32'h307c: begin
+          o_resp.rdata[31:0]     = i_target[M_DOMAIN][31][31:0];
+          o_target_re[M_DOMAIN][31]      = 1'b1;
+        end
+        DOMAIN_S_ADDR + 32'h307c: begin
+          o_resp.rdata[31:0]     = i_target[S_DOMAIN][31][31:0];
+          o_target_re[S_DOMAIN][31]      = 1'b1;
         end
         DOMAIN_M_ADDR + 32'h4000: begin
           o_resp.rdata[0:0]     = i_idelivery[M_DOMAIN][0][0:0];
