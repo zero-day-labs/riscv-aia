@@ -28,7 +28,8 @@ reg_intf::reg_intf_req_a32_d32                          i_req           ;
 reg_intf::reg_intf_resp_d32                             o_resp          ;
 logic [NR_REG:0][NR_BITS_SRC-1:0]                       rectified_src   ;
 logic [NR_DOMAINS-1:0]                                  domaincfgDM     ;
-logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]       active          ;
+logic [NR_SRC-1:1]                                      intp_domain     ;
+logic [NR_REG:0][NR_BITS_SRC-1:0]                       active          ;
 logic [NR_REG:0][NR_BITS_SRC-1:0]                       setip           ;
 logic [NR_REG:0][NR_BITS_SRC-1:0]                       claimed         ;
 logic [NR_SRC-1:1][10:0]                                sourcecfg       ;
@@ -61,6 +62,7 @@ aplic_domain_regctl #(
     .o_sourcecfg            ( sourcecfg             ),
     .o_sugg_setip           ( sugg_setip            ),
     .o_domaincfgDM          ( domaincfgDM           ),
+    .o_intp_domain          ( intp_domain           ),
     .o_active               ( active                ),
     .o_claimed_or_forwarded ( claimed               ),
     .i_intp_pen             ( setip                 ),
@@ -88,6 +90,7 @@ aplic_domain_gateway #(
     .i_sources              ( i_sources             ),                        
     .i_sourcecfg            ( sourcecfg             ),                            
     .i_domaincfgDM          ( domaincfgDM           ),                                
+    .i_intp_domain          ( intp_domain           ),                        
     .i_active               ( active                ),                        
     .i_sugg_setip           ( sugg_setip            ),                                
     .i_claimed              ( claimed               ),                        

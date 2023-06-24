@@ -1,5 +1,5 @@
 //
-module aplic_domain_top_wrapper #(
+module aplic_top_minimal_wrapper #(
     parameter int                                       NR_DOMAINS  = 2             ,
     parameter int                                       NR_SRC      = 32            ,
     parameter int                                       MIN_PRIO    = 6             ,

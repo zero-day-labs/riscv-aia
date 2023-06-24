@@ -22,24 +22,15 @@ module aplic_domain_regctl_wrapper #(
     output  logic                                       reg_intf_resp_d32_error     ,
     output  logic                                       reg_intf_resp_d32_ready     ,
     /** Gateway */
-    output  logic [(NR_SRC*11)-1:0]                     o_sourcecfg                 ,
-    output  logic [1:0]                                 o_domaincfgDM               ,
-    output  logic [((NR_REG+1)*NR_BITS_SRC)-1:0]        o_active                    ,
-    input   logic [((NR_REG+1)*NR_BITS_SRC)-1:0]        i_rectified_src             ,
-    /** Notifier */
-    output  logic [1:0]                                 o_domaincfgIE               ,
-    output  logic [(NR_SRC*NR_BITS_SRC)-1:0]            o_target                    ,
-    input   logic [(NR_DOMAINS*NR_IDCs)-1:0][25:0]      i_topi                      ,   
-    input   logic [(NR_DOMAINS*NR_IDCs)-1:0]            i_topi_update
+    input   logic [((NR_REG+1)*NR_BITS_SRC)-1:0]        i_rectified_src             
 );
 
 reg_intf::reg_intf_req_a32_d32              i_req;
 reg_intf::reg_intf_resp_d32                 o_resp;
 
-logic [NR_SRC-1:1][10:0]                    sourcecfg_o;
-logic [NR_SRC-1:1][31:0]                    target_o;
 logic [NR_REG:0][NR_BITS_SRC-1:0]           rectified_src_i;
-logic [NR_REG:0][NR_BITS_SRC-1:0]           bypass_gateway;
+logic [NR_REG:0][NR_BITS_SRC-1:0]           sugg_setip, bypass_gateway;
+logic [NR_REG:0][NR_BITS_SRC-1:0]           active;
 
 assign i_req.addr   = reg_intf_req_a32_d32_addr;
 assign i_req.write  = reg_intf_req_a32_d32_write;
@@ -51,14 +42,11 @@ assign reg_intf_resp_d32_rdata = o_resp.rdata;
 assign reg_intf_resp_d32_error = o_resp.error;
 assign reg_intf_resp_d32_ready = o_resp.ready;
 
-for (genvar i = 1; i < NR_SRC; i++) begin
-    assign o_sourcecfg[i*11 +: 11]                              = sourcecfg_o[i];
-    assign o_target[i*NR_BITS_SRC +: NR_BITS_SRC]               = target_o[i];
+for (genvar i = 0; i <= NR_REG; i++) begin
+    assign rectified_src_i[i] = i_rectified_src[i*NR_BITS_SRC +: NR_BITS_SRC];
 end
 
-for (genvar i = 0; i <= NR_REG; i++) begin
-    assign rectified_src_i[i]                                  = i_rectified_src[i*NR_BITS_SRC +: NR_BITS_SRC];
-end
+assign bypass_gateway = active & sugg_setip;
 
 aplic_domain_regctl #(
     .DOMAIN_M_ADDR          ( 32'hc000000                       ),    
@@ -74,24 +62,24 @@ aplic_domain_regctl #(
     .ni_rst                 ( ni_rst                ),
     .i_req_cfg              ( i_req                 ),
     .o_resp_cfg             ( o_resp                ),
-    .o_sourcecfg            ( sourcecfg_o           ),
-    .o_sugg_setip           ( bypass_gateway        ),
-    .o_domaincfgDM          ( o_domaincfgDM         ),
-    .o_active               (               ),
+    .o_sourcecfg            (),
+    .o_sugg_setip           ( sugg_setip            ),
+    .o_domaincfgDM          (),
+    .o_active               ( active                ),
     .o_claimed_or_forwarded (),
-    .i_intp_pen             (bypass_gateway         ),
+    .i_intp_pen             ( bypass_gateway        ),
     .i_rectified_src        ( rectified_src_i       ),
-    .o_domaincfgIE          ( o_domaincfgIE         ),
+    .o_domaincfgIE          (),
     .o_setip                (),
     .o_setie                (),
-    .o_target               ( target_o              )
+    .o_target               ()
 `ifdef DIRECT_MODE
     ,
-    .o_idelivery            ( ),
-    .o_ithreshold           ( ),
-    .o_iforce               ( ),
-    .i_topi                 ( i_topi                ),
-    .i_topi_update          ( i_topi_update         )
+    .o_idelivery            (),
+    .o_ithreshold           (),
+    .o_iforce               (),
+    .i_topi                 (),
+    .i_topi_update          ()
 `endif
 );
 endmodule

@@ -13,7 +13,13 @@ DOMAINCFG_S_BASE        = APLIC_S_BASE + 0x0000
 SOURCECFG_M_BASE        = APLIC_M_BASE + 0x0004
 SOURCECFG_S_BASE        = APLIC_S_BASE + 0x0004
 SOURCECFG_OFF           = 0x0004
-
+DELEGATE_SRC            = 0x400
+INACTIVE                = 0
+DETACHED                = 1
+EDGE1                   = 4
+EDGE0                   = 5
+LEVEL1                  = 6
+LEVEL0                  = 7
 # Target base macros
 TARGET_M_BASE           = APLIC_M_BASE + 0x3004
 TARGET_S_BASE           = APLIC_S_BASE + 0x3004
@@ -109,10 +115,13 @@ async def test_notifier(dut):
     await Timer(4, units="ns")
 
     # Make source 14 active in M domain, edge-sensitive rising edge
-    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), EDGE1)
+    await Timer(4, units="ns")
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
     await Timer(4, units="ns")
     # Make source 23 active in S domain, edge-sensitive rising edge
-    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), EDGE1)
     await Timer(4, units="ns")
 
     # Make TARGET 14 in M domain, hart = 0, prio =  2

@@ -13,6 +13,13 @@ DOMAINCFG_S_BASE        = APLIC_S_BASE + 0x0000
 SOURCECFG_M_BASE        = APLIC_M_BASE + 0x0004
 SOURCECFG_S_BASE        = APLIC_S_BASE + 0x0004
 SOURCECFG_OFF           = 0x0004
+DELEGATE_SRC            = 0x400
+INACTIVE                = 0
+DETACHED                = 1
+EDGE1                   = 4
+EDGE0                   = 5
+LEVEL1                  = 6
+LEVEL0                  = 7
 
 # Target base macros
 TARGET_M_BASE           = APLIC_M_BASE + 0x3004
@@ -94,7 +101,7 @@ async def test_aplic_direct_mode(dut):
     # Enable M domain in direct mode
     axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8))
     await Timer(4, units="ns")
-    # Enable M domain in direct mode
+    # Enable S domain in direct mode
     axi_write_reg(dut, DOMAINCFG_S_BASE, (1 << 8))
     await Timer(4, units="ns")
 
@@ -112,12 +119,25 @@ async def test_aplic_direct_mode(dut):
     axi_write_reg(dut, ITHRESHOLD_S_BASE, 0)
     await Timer(4, units="ns")
 
-    # Make source 14 active in M domain, edge-sensitive rising edge
-    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
-    await Timer(4, units="ns")
-    # Make source 23 active in S domain, edge-sensitive rising edge
-    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
-    await Timer(4, units="ns")
+
+    # Interrupts source configuration
+    # Configure interrupts 14 for M domain.
+    # Other interrupts are delegated to S domain
+    for i in range(1, 32):
+        if i == 14:
+            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * 13), EDGE1)
+        elif i == 3:
+            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * 3), EDGE1)
+        else:
+            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * (i-1)), DELEGATE_SRC)
+        await Timer(4, units="ns")
+    # Configure interrupts 23 for S domain.
+    for i in range(1,32):
+        if i == 23:
+            axi_write_reg(dut, SOURCECFG_S_BASE + (SOURCECFG_OFF * (i-1)), EDGE1)
+        else:
+            axi_write_reg(dut, SOURCECFG_S_BASE + (SOURCECFG_OFF * (i-1)), DELEGATE_SRC)
+        await Timer(4, units="ns")
 
     # Make TARGET 14 in M domain, hart = 0, prio =  2
     axi_write_reg(dut, TARGET_M_BASE+(TARGET_OFF * 13), (0 << 18) | (2 << 0))
@@ -196,6 +216,15 @@ async def test_aplic_direct_mode(dut):
     axi_write_reg(dut, DOMAINCFG_S_BASE, (1 << 8))
     await Timer(4, units="ns")
 
+async def test_aplic_direct_mode_sourcecfg(dut):
+    # Make source 14 active in M domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), EDGE1)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), EDGE1)
+    await Timer(4, units="ns")
+
+
 async def generate_clock(dut):
     """Generate clock pulses."""
 
@@ -223,6 +252,6 @@ async def regctl_unit_test(dut):
     dut.ni_rst.value = 1
     await Timer(1, units="ns")
 
-    await cocotb.start(test_aplic_direct_mode(dut))
+    await cocotb.start(test_aplic_direct_mode_sourcecfg(dut))
     
     await Timer(10000, units="ns")

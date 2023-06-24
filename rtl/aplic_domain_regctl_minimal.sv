@@ -46,7 +46,8 @@ module aplic_domain_regctl #(
     output  logic [NR_SRC-1:1][10:0]                                o_sourcecfg         ,
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]                       o_sugg_setip        ,
     output  logic [NR_DOMAINS-1:0]                                  o_domaincfgDM       ,
-    output  logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]       o_active            ,
+    output  logic [NR_SRC-1:1]                                      o_intp_domain       ,
+    output  logic [NR_REG:0][NR_BITS_SRC-1:0]                       o_active            ,
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]                       o_claimed_or_forwarded ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_intp_pen          ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_rectified_src     ,
@@ -62,6 +63,12 @@ module aplic_domain_regctl #(
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0][IPRIOLEN-1:0]       o_ithreshold        ,
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][25:0]               i_topi              ,
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     i_topi_update
+`else
+    /**  interface for msi mode */
+    input   logic                                       i_forwarded_valid     ,
+    input   logic [10:0]                                i_intp_forwd_id   ,
+    output  logic [31:0]                                o_genmsi,
+    input   logic                                       i_genmsi_sent,
 `endif
 );
 
@@ -87,7 +94,9 @@ module aplic_domain_regctl #(
   localparam W_FORCE                  = 2'h2;
 // =========================================================
 
-logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]   active;
+logic [NR_REG:0][NR_BITS_SRC-1:0]                   active;
+logic [NR_SRC-1:1]/**[NR_DOMAIN_W:0]*/              intp_domain_d, intp_domain_q;
+logic [NR_SRC-1:1]                                  change_of_domain_detected;
 logic [2:0]                                         setie_select_i, setip_select_i;
 logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
 
@@ -97,35 +106,41 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
   logic [NR_DOMAINS-1:0][31:0]                      domaincfg_o;
   logic [NR_DOMAINS-1:0]                            domaincfg_we;
   // Register sourcecfg
-  logic [NR_DOMAINS-1:0][NR_SRC-1:1][10:0]          sourcecfg_q, sourcecfg_d;
+  logic [NR_SRC-1:1][10:0]                          sourcecfg_q, sourcecfg_d;
+  logic [NR_SRC-1:1][10:0]                          sourcecfg_mux3_i0;
+  logic [NR_DOMAINS-1:0][NR_SRC-1:1][10:0]          sourcecfg_full;
   logic [NR_DOMAINS-1:0][NR_SRC-1:1][10:0]          sourcecfg_o;
   logic [NR_DOMAINS-1:0][NR_SRC-1:1]                sourcecfg_we;
+  logic [NR_SRC-1:1]                                sourcecfg_final_we;
   // Register setip
   logic [NR_REG:0][31:0]                            setip_q, setip_d;
   logic [3:0][NR_REG:0][31:0]                       setip_mux0_in;
   logic [NR_REG:0][31:0]                            setip_mux0_o;
   logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            setip_full;
-  logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            setip_or_in;
   logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            setip_o;
   logic [NR_DOMAINS-1:0][NR_REG:0]                  setip_we;
+  logic [NR_REG:0]                                  setip_final_we;
   // Register setipnum
   logic [31:0]                                      setipnum_q, setipnum_d;
   logic [31:0]                                      setip_mux2_i1;
   logic [NR_DOMAINS-1:0][31:0]                      setipnum_mux0_out;
   logic [NR_DOMAINS-1:0][31:0]                      setipnum_o;
   logic [NR_DOMAINS-1:0]                            setipnum_we;
+  logic                                             setipnum_final_we;
   // Register in_clrip
   logic [NR_REG:0][31:0]                            in_clrip_q, in_clrip_d;
   logic [NR_REG:0][31:0]                            clrip_mux0_i1;
-  logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            in_clrip_full, clrip_or_in;
+  logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            in_clrip_full;
   logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            in_clrip_o;
   logic [NR_DOMAINS-1:0][NR_REG:0]                  in_clrip_we;
+  logic [NR_REG:0]                                  clrip_final_we;
   // Register clripnum
   logic [31:0]                                      clripnum_q, clripnum_d;
   logic [31:0]                                      clrip_mux2_i1;
   logic [NR_DOMAINS-1:0][31:0]                      clripnum_mux0_out;
   logic [NR_DOMAINS-1:0][31:0]                      clripnum_o;
   logic [NR_DOMAINS-1:0]                            clripnum_we;
+  logic                                             clripnum_final_we;
   // Register setie
   logic [NR_REG:0][31:0]                            setie_q, setie_d;
   logic [3:0][NR_REG:0][31:0]                       setie_mux0_in;
@@ -134,31 +149,33 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
   logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            setie_or_in;
   logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            setie_o;
   logic [NR_DOMAINS-1:0][NR_REG:0]                  setie_we;
+  logic [NR_REG:0]                                  setie_final_we;
   // Register setienum
   logic [31:0]                                      setienum_q, setienum_d;
   logic [31:0]                                      setie_mux2_i1;
   logic [NR_DOMAINS-1:0][31:0]                      setienum_mux0_out;
   logic [NR_DOMAINS-1:0][31:0]                      setienum_o;
   logic [NR_DOMAINS-1:0]                            setienum_we;
+  logic                                             setienum_final_we;
   // Register clrie
   logic [NR_REG:0][31:0]                            clrie_q, clrie_d;
   logic [NR_REG:0][31:0]                            clrie_mux0_i1;
-  logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            clrie_full, clrie_or_in;
   logic [NR_DOMAINS-1:0][NR_REG:0][31:0]            clrie_o;
   logic [NR_DOMAINS-1:0][NR_REG:0]                  clrie_we;
+  logic [NR_REG:0]                                  clrie_final_we;
   // Register clrienum
   logic [31:0]                                      clrienum_q, clrienum_d;
   logic [31:0]                                      clrie_mux2_i1;
   logic [NR_DOMAINS-1:0][31:0]                      clrienum_mux0_out;
   logic [NR_DOMAINS-1:0][31:0]                      clrienum_o;
   logic [NR_DOMAINS-1:0]                            clrienum_we;
+  logic                                             clrienum_final_we;
   // Register target
   logic [NR_SRC-1:1][31:0]                          target_q, target_d;
   logic [NR_DOMAINS-1:0][NR_SRC-1:1][31:0]          target_full;
   logic [NR_DOMAINS-1:0][NR_SRC-1:1][31:0]          target_o;
   logic [NR_DOMAINS-1:0][NR_SRC-1:1]                target_we;
 
-  logic debug;
 `ifdef DIRECT_MODE
   // Register idelivery
   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]          idelivery_q, idelivery_d;
@@ -200,7 +217,7 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
     .o_domaincfg_we         ( domaincfg_we      ),
     .o_domaincfg_re         (),
     // Register: sourcecfg
-    .i_sourcecfg            ( sourcecfg_q       ),
+    .i_sourcecfg            ( sourcecfg_full    ),
     .o_sourcecfg            ( sourcecfg_o       ),
     .o_sourcecfg_we         ( sourcecfg_we      ),
     .o_sourcecfg_re         (),
@@ -341,12 +358,10 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
 // ========================== ACTIVE ==============================
     always_comb begin
         active = '0;
-        for (int i = 0; i < NR_DOMAINS; i++) begin
-            for (int j = 1; j < NR_SRC; j++) begin
-                if(!((sourcecfg_q[i][j][10] == DELEGATED) || 
-                    ((sourcecfg_q[i][j][10] == NON_DELEGATED) && (sourcecfg_q[i][j][2:0] == INACTIVE)))) begin
-                    active[i][j/32][j%32] = INTP_ACTIVE;
-                end
+        for (int j = 1; j < NR_SRC; j++) begin
+            if(!((sourcecfg_q[j][10] == DELEGATED) || 
+                ((sourcecfg_q[j][10] == NON_DELEGATED) && (sourcecfg_q[j][2:0] == INACTIVE)))) begin
+                active[j/32][j%32] = INTP_ACTIVE;
             end
         end
     end
@@ -366,75 +381,101 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
 // ================================================================
 
 // ========================= SOURCECFG ============================
-    always_comb begin :sourcecfg_logic
-        /** reset value */
-        sourcecfg_d = sourcecfg_q;
-    
-        for (int i = 0; i < NR_DOMAINS; i++) begin
-            for (int j = 1; j < NR_SRC; j++) begin
-                case ({sourcecfg_o[i][j][10], sourcecfg_we[i][j]})
-                    {NON_DELEGATED, 1'b1} : sourcecfg_d[i][j] = {sourcecfg_o[i][j][10], 7'b0, sourcecfg_o[i][j][2:0]};
-                    /** We only support M -> S configuration for now. 
-                        As so, the last domain (S) is the only leaf. 
-                        When we try to delegate an intp on a leaf domain, zero the reg. */
-                    {DELEGATED, 1'b1}     : sourcecfg_d[i][j] = (i == NR_DOMAINS-1) ? '0 : sourcecfg_o[i][j];
-                    default:;
-                endcase
+    logic zero_reg;
+    always_comb begin : intp_domain_logic
+        intp_domain_d   = intp_domain_q;
+        zero_reg        = '0;
+        for (int i = 0; i < NR_SRC; i++) begin
+            if ((sourcecfg_o[0][i][10] != intp_domain_q[i]) && sourcecfg_we[0][i]) begin
+                intp_domain_d[i] = ~intp_domain_q[i];
+            end
+            if ((sourcecfg_o[1][i][10] == 1'b1) && sourcecfg_we[1][i]) begin
+                zero_reg = 1'b1;
             end
         end
     end
 
-    /** We only send to the gateway the sourcecfg of active intp. 
-        For the gateway there is no concept of domain (+-) */
-    always_comb begin : sourcecfg_out_logic
-        o_sourcecfg = '0;
+    assign o_intp_domain = intp_domain_q;
+
+    always_comb begin :sourcecfg_logic
+        /** reset value */
+        sourcecfg_d         = sourcecfg_q;
+        sourcecfg_mux3_i0   = '0;
+        sourcecfg_final_we  = '0;
+
         for (int i = 0; i < NR_DOMAINS; i++) begin
             for (int j = 1; j < NR_SRC; j++) begin
-                if(active[i][j/32][j%32]) begin
-                    o_sourcecfg[j] = sourcecfg_q[i][j];
+                if (intp_domain_d[j] == i[0]) begin
+                    sourcecfg_mux3_i0[j]    = (zero_reg) ? '0 : sourcecfg_o[i][j];
+                    sourcecfg_final_we[j]   = sourcecfg_we[i][j];
                 end
+                sourcecfg_d[j] = (sourcecfg_final_we[j]) ? sourcecfg_mux3_i0[j] : sourcecfg_q[j];
             end
         end
+        o_sourcecfg = sourcecfg_q;
     end
     
+    always_comb begin : sourcecfg_rebuild
+        sourcecfg_full = '0;
+        for (int j = 0; j < NR_SRC; j++) begin
+            if (intp_domain_q[j] == 1'b1) begin
+                sourcecfg_full[0][j] = (1 << 10);    
+            end
+            sourcecfg_full[intp_domain_q[j]][j] = sourcecfg_q[j];
+        end
+    end
 // ================================================================
 
 // ========================== PENDING =============================
     always_comb begin : setipnum_logic
+        setipnum_d          = setipnum_q;
+        setipnum_final_we   = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            setipnum_mux0_out[i]    = (active[i][setipnum_o[i]/32][setipnum_o[i]%32]) ? setipnum_o[i] : '0;
+            /** If the intp written in setipnum_o is delegated to this domain AND
+                an update was requested, update setipnum_d */
+            if ((intp_domain_q[setipnum_o[i]] == i[0]) && setipnum_we[i]) begin
+                setipnum_d          = setipnum_o[i];
+                setipnum_final_we   = setipnum_we[i];
+            end
         end
-        setip_mux2_i1   = setipnum_mux0_out[0] | setipnum_mux0_out[1];
-        setipnum_d      = (|setipnum_we) ? setip_mux2_i1 : setipnum_q;
     end
     always_comb begin : clripnum_logic
+        clripnum_d          = clripnum_q;
+        clripnum_final_we   = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            clripnum_mux0_out[i]    = (active[i][clripnum_o[i]/32][clripnum_o[i]%32]) ? clripnum_o[i] : '0;
+            if ((intp_domain_q[clripnum_o[i]] == i[0]) && clripnum_we[i]) begin
+                clripnum_d          = clripnum_o[i];
+                clripnum_final_we   = clripnum_we[i];
+            end
         end
-        clrip_mux2_i1   = clripnum_mux0_out[0] | clripnum_mux0_out[1];
-        clripnum_d      = (|clripnum_we) ? clrip_mux2_i1 : clripnum_q;
     end
     always_comb begin : inclrip_logic
-        clrip_or_in = in_clrip_o & active;
-        clrip_mux0_i1 = clrip_or_in[1] | clrip_or_in[0];
-        for (int j = 0; j <= NR_REG; j++) begin 
-            in_clrip_d[j]    = (in_clrip_we[0][j] || in_clrip_we[1][j]) ? clrip_mux0_i1[j] : in_clrip_q[j]; 
-        end 
+        for (int i = 0; i < NR_SRC; i++) begin
+            clrip_mux0_i1[i/32][i%32] = in_clrip_o[intp_domain_q[i]][i/32][i%32];
+        end
+        clrip_final_we = in_clrip_we[0] | in_clrip_we[1];
+
+        for (int i = 0; i <= NR_REG; i++) begin
+            in_clrip_d[i] = (clrip_final_we[i]) ? clrip_mux0_i1[i] : in_clrip_q[i];         
+        end
     end
     always_comb begin : rebuild_inclrip
+        in_clrip_full = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            in_clrip_full[i] = active[i] & i_rectified_src;
+            for (int j = 0; j < NR_SRC; j++) begin
+                in_clrip_full[intp_domain_q[j]][j/32][j%32] = i_rectified_src[j/32][j%32];
+            end
         end
     end
     always_comb begin : setip_control_unit
         setip_select_i = DEFAULT;
-        if (|setip_we) begin
+        if (|setip_final_we) begin
             setip_select_i = SETIX;
-        end else if (|in_clrip_we) begin
+        end else if (|clrip_final_we) begin
             setip_select_i = CLRIX;
-        end else if (|setipnum_we) begin
+        end else if (setipnum_final_we) begin
             setip_select_i = SETIXNUM;
-        end else if (|clripnum_we) begin
+        end else if (clripnum_final_we) begin
             setip_select_i = CLRIXNUM;
         end
     end
@@ -447,8 +488,10 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         setip_mux0_in[2]    = setip_q;
         setip_mux0_in[2][clripnum_d/32][clripnum_d%32] = 1'b0;
         
-        setip_or_in         = setip_o & active;
-        setip_mux0_in[3]    = (setip_or_in[1] | (setip_q & ~active[1])) | (setip_or_in[0] | (setip_q & ~active[0]));
+        for (int i = 1; i < NR_SRC; i++) begin
+            setip_mux0_in[3][i/32][i%32]    = setip_o[intp_domain_q[i]][i/32][i%32]; 
+        end
+        setip_final_we = setip_we[0] | setip_we[1];
 
         case (setip_select_i)       
             CLRIX       : setip_mux0_o           = setip_mux0_in[0];
@@ -460,8 +503,11 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         setip_mux0_o[0][0]                          = 1'b0;
     end
     always_comb begin : rebuild_setip
+        setip_full = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            setip_full[i] = active[i] & setip_q;
+            for (int j = 0; j < NR_SRC; j++) begin
+                setip_full[intp_domain_q[j]][j/32][j%32] = setip_q[j/32][j%32];
+            end
         end
     end
 
@@ -472,40 +518,51 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
 
 // =========================== ENABLE =============================
     always_comb begin : setienum_logic
+        setienum_d          = setienum_q;
+        setienum_final_we   = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            setienum_mux0_out[i]    = (active[i][setienum_o[i]/32][setienum_o[i]%32]) ? setienum_o[i] : '0;
+            /** If the intp written in setienum_o is delegated to this domain AND
+                an update was requested, update setipnum_d */
+            if ((intp_domain_q[setienum_o[i]] == i[0]) && setienum_we[i]) begin
+                setienum_d          = setienum_o[i];
+                setienum_final_we   = setienum_we[i];
+            end
         end
-        setie_mux2_i1   = setienum_mux0_out[0] | setienum_mux0_out[1];
-        setienum_d      = (|setienum_we) ? setie_mux2_i1 : setienum_q;
     end
     always_comb begin : clrienum_logic
+        clrienum_d          = clrienum_q;
+        clrienum_final_we   = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            clrienum_mux0_out[i]    = (active[i][clrienum_o[i]/32][clrienum_o[i]%32]) ? clrienum_o[i] : '0;
+            if ((intp_domain_q[clrienum_o[i]] == i[0]) && clrienum_we[i]) begin
+                clrienum_d          = clrienum_o[i];
+                clrienum_final_we   = clrienum_we[i];
+            end
         end
-        clrie_mux2_i1   = clrienum_mux0_out[0] | clrienum_mux0_out[1];
-        clrienum_d      = (|clrienum_we) ? clrie_mux2_i1 : clrienum_q;
     end
     always_comb begin : clrie_logic
-        clrie_or_in = clrie_o & active;
-        clrie_mux0_i1 = clrie_or_in[1] | clrie_or_in[0];
-        for (int j = 0; j <= NR_REG; j++) begin 
-            clrie_d[j]    = (clrie_we[0][j] || clrie_we[1][j]) ? clrie_mux0_i1[j] : clrie_q[j]; 
-        end 
+        for (int i = 0; i < NR_SRC; i++) begin
+            clrie_mux0_i1[i/32][i%32] = clrie_o[intp_domain_q[i]][i/32][i%32];
+        end
+        clrie_final_we = clrie_we[0] | clrie_we[1];
+
+        for (int i = 0; i <= NR_REG; i++) begin
+            clrie_d[i] = (clrie_final_we[i]) ? clrie_mux0_i1[i] : clrie_q[i];         
+        end
     end
     always_comb begin : setie_control_unit
         setie_select_i = DEFAULT;
-        if (|setie_we) begin
+        if (|setie_final_we) begin
             setie_select_i = SETIX;
-        end else if (|clrie_we) begin
+        end else if (|clrie_final_we) begin
             setie_select_i = CLRIX;
-        end else if (|setienum_we) begin
+        end else if (setienum_final_we) begin
             setie_select_i = SETIXNUM;
-        end else if (|clrienum_we) begin
+        end else if (clrienum_final_we) begin
             setie_select_i = CLRIXNUM;
         end
     end
     always_comb begin : setie_logic
-        setie_mux0_in[0]    = ~clrie_q & setie_q;
+        setie_mux0_in[0]    = ~clrie_d & setie_q;
 
         setie_mux0_in[1]    = setie_q;
         setie_mux0_in[1][setienum_d/32][setienum_d%32] = 1'b1;
@@ -513,8 +570,10 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         setie_mux0_in[2]    = setie_q;
         setie_mux0_in[2][clrienum_d/32][clrienum_d%32] = 1'b0;
         
-        setie_or_in         = setie_o & active;
-        setie_mux0_in[3]    = (setie_or_in[1] | (setie_q & ~active[1])) | (setie_or_in[0] | (setie_q & ~active[0]));
+        for (int i = 0; i < NR_SRC; i++) begin
+            setie_mux0_in[3][i/32][i%32] = setie_o[intp_domain_q[i]][i/32][i%32]; 
+        end
+        setie_final_we = setie_we[0] | setie_we[1];
 
         case (setie_select_i)       
             CLRIX       : setie_mux0_o           = setie_mux0_in[0];
@@ -526,39 +585,45 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         setie_mux0_o[0][0]                          = 1'b0;
     end
     always_comb begin : rebuild_setie
+        setie_full = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
-            setie_full[i] = active[i] & setie_q;
+            for (int j = 0; j < NR_SRC; j++) begin
+                setie_full[intp_domain_q[j]][j/32][j%32] = setie_q[j/32][j%32];
+            end
         end
     end
-    assign setie_d = setie_mux0_o & (active[0] | active[1]);
 
+    assign setie_d = setie_mux0_o & active;
     assign o_setie = setie_q;
+
 // ================================================================
 
 // =========================== TARGET =============================
   // Determines the new value of target
   always_comb begin : target_logic
-      for (int i = 0; i < NR_DOMAINS ; i++) begin
-          for (int j = 1; j < NR_SRC; j++) begin
-            /** if the interrupt is active in the domain and has write enable,
-                then choose the APLIC functioning mode to properly config the reg
-                otherwise keep the same value */
-            if(active[i][j/32][j%32] && target_we[i][j]) begin
-                case (domaincfg_q[i][2])
-                  APLIC_DIRECT_MODE:    target_d[j]    = {target_o[i][j][31:18], 10'b0, (target_o[i][j][7:0] == 0) ? 8'h1: target_o[i][j][7:0]};
-                  APLIC_MSI_MODE:       target_d[j]    = {target_o[i][j][31:12], 1'b0, target_o[i][j][10:0]};
-                  default:              target_d[j]    = target_q[j];     
-              endcase               
-            end
-          end
-      end
+    target_d = target_q;
+    for (int i = 0; i < NR_DOMAINS ; i++) begin
+        for (int j = 1; j < NR_SRC; j++) begin
+        /** if the interrupt is active in the domain and has write enable,
+            then choose the APLIC functioning mode to properly config the reg
+            otherwise keep the same value */
+        if((intp_domain_q[j] == i[0]) && active[j/32][j%32] && target_we[i][j]) begin
+            case (domaincfg_q[i][2])
+                APLIC_DIRECT_MODE:    target_d[j]    = {target_o[i][j][31:18], 10'b0, (target_o[i][j][7:0] == 0) ? 8'h1: target_o[i][j][7:0]};
+                APLIC_MSI_MODE:       target_d[j]    = {target_o[i][j][31:12], 1'b0, target_o[i][j][10:0]};
+                default:              target_d[j]    = target_q[j];     
+            endcase               
+        end
+        end
+    end
   end
 
   always_comb begin : target_rebuild
+    target_full = '0;
     for (int i = 0; i < NR_DOMAINS; i++) begin
         for (int j = 1; j < NR_SRC; j++) begin
-            target_full[i][j] = (active[i][j/32][j%32]) ? target_q[j] : '0;
-        end 
+            target_full[intp_domain_q[j]][j] = target_q[j];
+        end
     end
   end
 
@@ -601,8 +666,8 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
             for (int j = 0; j < NR_IDCs; j++) begin
                 idelivery_d[i][j]       = (idelivery_we[i][j]) ? idelivery_o[i][j] : idelivery_q[i][j];
                 ithreshold_d[i][j]      = (ithreshold_we[i][j]) ? ithreshold_o[i][j] : ithreshold_q[i][j];
-                topi_d[i][j]            = ((topi_q[i][j] != 0) && claimi_re[i][j]) ? '0 :
-                                        ((i_topi_update[i][j])) ? i_topi[i][j] : topi_q[i][j]; 
+                topi_d[i][j]            = ((i_topi_update[i][j]) || 
+                                          ((i_topi[i][j] == 0) && claimi_re[i][j])) ? i_topi[i] : topi_q[i][j];
                 case (iforce_ctl[i][j])
                     ZERO_FORCE: iforce_d[i]  = '0;
                     W_FORCE:    iforce_d[i]  = iforce_o[i][j]; 
@@ -618,6 +683,24 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
     `endif
 // ================================================================
 
+// ========================== GENMSI ==============================
+  `ifdef MSI_MODE
+  always_comb begin
+    genmsi_d = genmsi_q;
+
+    for (int i = 0; i < NR_DOMAINS; i++) begin
+        if (genmsi_we[i] && ~genmsi_q[i][12] && (genmsi_o[i][10:0] != '0)) begin
+            genmsi_d[i] = {genmsi_o[i][31:18], {5{1'b0}}, 1'b1, 1'b0, genmsi_o[i][10:0]};
+        end
+        if (i_genmsi_sent) begin
+            /** clear the busy bit */
+            genmsi_d[i] = genmsi_q[i] & ~(32'h1<<12);
+        end
+    end
+  end
+  `endif
+// ================================================================
+
 /**=================== Registers sequential logic ===============*/
   always_ff @( posedge i_clk or negedge ni_rst ) begin
     if (!ni_rst) begin
@@ -628,6 +711,7 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
             domaincfg_q[i]     <= 32'h80000000;
         `endif
         end
+        intp_domain_q       <= '0;
         sourcecfg_q         <= '0;
         setipnum_q          <= '0;
         clripnum_q          <= '0;
@@ -644,9 +728,12 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         topi_q              <= '0;
         iforce_q            <= '0;
         claimi_re_q         <= '0;
+        `else
+        genmsi_q            <= '0;
         `endif
     end else begin
         domaincfg_q         <= domaincfg_d;
+        intp_domain_q       <= intp_domain_d;
         sourcecfg_q         <= sourcecfg_d;
         setipnum_q          <= setipnum_d;
         clripnum_q          <= clripnum_d;
@@ -663,6 +750,8 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         topi_q              <= topi_d;
         iforce_q            <= iforce_d;
         claimi_re_q         <= claimi_re;
+        `else
+        genmsi_q            <= genmsi_d;
         `endif
     end
   end

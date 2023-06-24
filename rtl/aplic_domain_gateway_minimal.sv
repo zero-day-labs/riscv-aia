@@ -32,7 +32,8 @@ module aplic_domain_gateway #(
     input   logic [NR_SRC-1:0]                                  i_sources         ,
     input   logic [NR_SRC-1:1][10:0]                            i_sourcecfg       ,
     input   logic [NR_DOMAINS-1:0]                              i_domaincfgDM     ,
-    input   logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]   i_active          ,
+    input   logic [NR_SRC-1:1]                                  i_intp_domain     ,
+    input   logic [NR_REG:0][NR_BITS_SRC-1:0]                   i_active          ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                   i_sugg_setip      ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                   i_claimed         ,
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]                   o_setip           ,
@@ -60,7 +61,6 @@ module aplic_domain_gateway #(
 /** Internal signals*/
 logic [NR_SRC-1:0]                      rectified_src, rectified_src_q;
 logic [NR_REG:0][NR_BITS_SRC-1:0]       new_intp;
-logic [NR_REG:0][NR_BITS_SRC-1:0]       active_concat;
 /** Control signals */
 logic [NR_SRC-1:0]                      new_intp_src;
 logic [NR_SRC-1:0][2:0]                 intp_pen_src;
@@ -84,7 +84,7 @@ logic [NR_SRC-1:0][2:0]                 intp_pen_src;
                 end
                 LEVEL1, LEVEL0: begin
                     for (int j = 0; j < NR_DOMAINS; j++) begin
-                        if (i_active[j][i/32][i%32]) begin
+                        if (i_intp_domain[j] == j[0]) begin
                             if(i_domaincfgDM[j])begin
                                 new_intp_src[i]     = FROM_EDGE_DETECTOR;
                                 intp_pen_src[i]     = LEVELXDM1_C;
@@ -102,9 +102,6 @@ logic [NR_SRC-1:0][2:0]                 intp_pen_src;
         end
     end
 // =========================================================
-
-/** Concatenate the active signal */
-assign active_concat = i_active[0] | i_active[1];
 
 /** Rectify the input*/
 for (genvar i = 1; i < NR_SRC; i++) begin
@@ -125,17 +122,17 @@ end
         for (int i = 1; i < NR_SRC; i++) begin
             case (intp_pen_src[i])
                 DETACHED_C: begin
-                    o_setip[i/32][i%32] = i_sugg_setip[i/32][i%32] & active_concat[i/32][i%32] & ~(i_claimed[i/32][i%32]);
+                    o_setip[i/32][i%32] = i_sugg_setip[i/32][i%32] & i_active[i/32][i%32] & ~(i_claimed[i/32][i%32]);
                 end
                 EDGEX_C: begin
                     o_setip[i/32][i%32] = (new_intp[i/32][i%32] | i_sugg_setip[i/32][i%32]) & 
-                                           active_concat[i/32][i%32] & ~(i_claimed[i/32][i%32]);
+                                           i_active[i/32][i%32] & ~(i_claimed[i/32][i%32]);
                 end
                 LEVELXDM0_C: begin
-                    o_setip[i/32][i%32] = new_intp[i/32][i%32] & active_concat[i/32][i%32];
+                    o_setip[i/32][i%32] = new_intp[i/32][i%32] & i_active[i/32][i%32];
                 end
                 LEVELXDM1_C: begin
-                    o_setip[i/32][i%32] = (new_intp[i/32][i%32] | i_sugg_setip[i/32][i%32]) & active_concat[i/32][i%32] & 
+                    o_setip[i/32][i%32] = (new_intp[i/32][i%32] | i_sugg_setip[i/32][i%32]) & i_active[i/32][i%32] & 
                                         ~(~new_intp[i/32][i%32] | i_claimed[i/32][i%32]);
                 end
                 default: begin

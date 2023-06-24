@@ -40,6 +40,8 @@ module aplic_domain_top #(
    `endif
 );
 // ================== INTERCONNECTION SIGNALS =====================
+   logic [NR_SRC-1:1]                                      intp_domain         ;
+
    /** Notifier signals */
    logic [NR_DOMAINS-1:0]                                  domaincfgIE         ;
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       setip_to_notifier   ;
@@ -54,7 +56,7 @@ module aplic_domain_top #(
    /** Gateway signals */
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       rectified_src       ;
    logic [NR_DOMAINS-1:0]                                  domaincfgDM         ;
-   logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]       active              ;
+   logic [NR_REG:0][NR_BITS_SRC-1:0]                       active              ;
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       setip               ;
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       claimed             ;
    logic [NR_SRC-1:1][10:0]                                sourcecfg           ;
@@ -71,6 +73,7 @@ module aplic_domain_top #(
       .i_sources              ( i_irq_sources         ),                        
       .i_sourcecfg            ( sourcecfg             ),                            
       .i_domaincfgDM          ( domaincfgDM           ),                                
+      .i_intp_domain          ( intp_domain           ),                        
       .i_active               ( active                ),                        
       .i_sugg_setip           ( sugg_setip            ),                                
       .i_claimed              ( claimed               ),                        
@@ -91,7 +94,7 @@ module aplic_domain_top #(
       .i_setip_q              ( setip_to_notifier     ),
       .i_setie_q              ( setie_to_notifier     ),
       .i_target_q             ( target                ),
-      .i_active               ( active                ),
+      .i_intp_domain          ( intp_domain           ),
    `ifdef DIRECT_MODE
       .i_idelivery            ( idelivery             ),    
       .i_iforce               ( iforce                ),
@@ -121,6 +124,7 @@ module aplic_domain_top #(
       .o_sourcecfg            ( sourcecfg             ),
       .o_sugg_setip           ( sugg_setip            ),
       .o_domaincfgDM          ( domaincfgDM           ),
+      .o_intp_domain          ( intp_domain           ),
       .o_active               ( active                ),
       .o_claimed_or_forwarded ( claimed               ),
       .i_intp_pen             ( setip                 ),

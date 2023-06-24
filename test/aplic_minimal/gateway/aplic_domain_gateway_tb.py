@@ -13,6 +13,13 @@ DOMAINCFG_S_BASE        = APLIC_S_BASE + 0x0000
 SOURCECFG_M_BASE        = APLIC_M_BASE + 0x0004
 SOURCECFG_S_BASE        = APLIC_S_BASE + 0x0004
 SOURCECFG_OFF           = 0x0004
+DELEGATE_SRC            = 0x400
+INACTIVE                = 0
+DETACHED                = 1
+EDGE1                   = 4
+EDGE0                   = 5
+LEVEL1                  = 6
+LEVEL0                  = 7
 
 # Target base macros
 TARGET_M_BASE           = APLIC_M_BASE + 0x3004
@@ -44,13 +51,6 @@ ITHRESHOLD_M_BASE       = APLIC_M_BASE + 0x4000 + 0x08
 ITHRESHOLD_S_BASE       = APLIC_S_BASE + 0x4000 + 0x08
 CLAIMI_M_BASE           = APLIC_M_BASE + 0x4000 + 0x1C
 CLAIMI_S_BASE           = APLIC_S_BASE + 0x4000 + 0x1C
-
-INACTIVE                = 0
-DETACHED                = 1
-EDGE1                   = 4
-EDGE0                   = 5
-LEVEL1                  = 6
-LEVEL0                  = 7
 
 class CInputs:
     reg_intf_req_a32_d32_addr  = 0
@@ -125,6 +125,9 @@ async def test_gateway(dut):
     # Make source 3 active in M domain, edge-sensitive falling edge
     axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 2), EDGE0)
     await Timer(4, units="ns")
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
     # Make source 23 active in S domain, edge-sensitive raising edge
     axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), EDGE1)
     await Timer(4, units="ns")
@@ -173,7 +176,6 @@ async def regctl_unit_test(dut):
     dut.ni_rst.value = 1
     await Timer(1, units="ns")
 
-    # await cocotb.start(test_domaincfg(dut))
     await cocotb.start(test_gateway(dut))
     
     await Timer(10000, units="ns")

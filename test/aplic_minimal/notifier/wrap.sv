@@ -38,7 +38,7 @@ logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                iforce;
 logic [NR_DOMAINS-1:0][NR_IDCs-1:0][IPRIOLEN-1:0]       ithreshold; 
 logic [NR_DOMAINS-1:0][NR_IDCs-1:0][25:0]               topi;
 logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     topi_update;
-logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]       active;
+logic [NR_SRC-1:1]                                      intp_domain;
 logic [NR_REG:0][NR_BITS_SRC-1:0]                       sugg_setip;
 assign i_req.addr   = reg_intf_req_a32_d32_addr;
 assign i_req.write  = reg_intf_req_a32_d32_write;
@@ -67,11 +67,12 @@ aplic_domain_regctl #(
     .ni_rst                 ( ni_rst                ),
     .i_req_cfg              ( i_req                 ),
     .o_resp_cfg             ( o_resp                ),
+    .o_intp_domain          ( intp_domain           ),
     /** Gateway */
     .o_sourcecfg            (),
     .o_sugg_setip           ( bypass_gateway        ),
     .o_domaincfgDM          (),
-    .o_active               ( active                ),
+    .o_active               (),
     .o_claimed_or_forwarded (),
     .i_intp_pen             ( bypass_gateway        ),
     .i_rectified_src        ( rectified_src_i       ),
@@ -100,7 +101,7 @@ aplic_domain_notifier #(
     .i_setip_q              ( setip                 ),
     .i_setie_q              ( setie                 ),
     .i_target_q             ( target                ),
-    .i_active               ( active                ),
+    .i_intp_domain          ( intp_domain           ),
 `ifdef DIRECT_MODE
     .i_idelivery            ( idelivery             ),    
     .i_iforce               ( iforce                ),

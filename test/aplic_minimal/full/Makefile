@@ -22,10 +22,10 @@ VERILOG_SOURCES += $(SRC_FOLDER)aplic_top_minimal.sv
 VERILOG_SOURCES += $(WRAPPER_SRC)
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
-TOPLEVEL = aplic_domain_top_wrapper
+TOPLEVEL = aplic_top_minimal_wrapper
 
 # MODULE is the basename of the Python test file
-MODULE = aplic_domain_top_tb
+MODULE = aplic_top_tb
 
 ifeq ($(CLEAN),)
 # include cocotb's make rules to take care of the simulator setup

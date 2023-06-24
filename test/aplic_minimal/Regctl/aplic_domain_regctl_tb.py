@@ -4,10 +4,6 @@ import cocotb
 from cocotb.triggers import RisingEdge, FallingEdge, Timer
 import random
 
-# The test functions need to use the decorator @cocotb.test()
-# Usage: await cocotb.start(generate_clock(dut))  # run the clock "in the background"
-# if you want to wait a specific time: await Timer(5, units="ns")  # wait a bit
-
 NR_SRC                  = 32
 NR_BITS_SRC             = NR_SRC if (NR_SRC > 31) else 32
 NR_REG                  = NR_SRC//32
@@ -28,12 +24,20 @@ APLIC_S_BASE            = 0xd000000
 SOURCECFG_M_BASE        = APLIC_M_BASE + 0x0004
 SOURCECFG_S_BASE        = APLIC_S_BASE + 0x0004
 SOURCECFG_OFF           = 0x0004
+DELEGATE_SRC            = 0x400
+INACTIVE                = 0
+DETACHED                = 1
+EDGE1                   = 4
+EDGE0                   = 5
+LEVEL1                  = 6
+LEVEL0                  = 7
 
 # Target base macros
 TARGET_M_BASE           = APLIC_M_BASE + 0x3004
 TARGET_S_BASE           = APLIC_S_BASE + 0x3004
 TARGET_OFF              = 0x0004
 
+# Pending base macros
 SETIPNUM_M_BASE         = APLIC_M_BASE + 0x1CDC
 SETIPNUM_S_BASE         = APLIC_S_BASE + 0x1CDC
 CLRIPNUM_M_BASE         = APLIC_M_BASE + 0x1DDC
@@ -42,6 +46,16 @@ SETIP_M_BASE            = APLIC_M_BASE + 0x1C00
 SETIP_S_BASE            = APLIC_S_BASE + 0x1C00
 INCLRIP_M_BASE          = APLIC_M_BASE + 0x1D00
 INCLRIP_S_BASE          = APLIC_S_BASE + 0x1D00
+
+# Enable base macros
+SETIENUM_M_BASE         = APLIC_M_BASE + 0x1EDC
+SETIENUM_S_BASE         = APLIC_S_BASE + 0x1EDC
+CLRIENUM_M_BASE         = APLIC_M_BASE + 0x1FDC
+CLRIENUM_S_BASE         = APLIC_S_BASE + 0x1FDC
+SETIE_M_BASE            = APLIC_M_BASE + 0x1E00
+SETIE_S_BASE            = APLIC_S_BASE + 0x1E00
+CLRIE_M_BASE            = APLIC_M_BASE + 0x1F00
+CLRIE_S_BASE            = APLIC_S_BASE + 0x1F00
 
 # IDC macros
 IDELIVERY_M_BASE        = APLIC_M_BASE + 0x4000 + 0x00
@@ -52,7 +66,6 @@ ITHRESHOLD_M_BASE       = APLIC_M_BASE + 0x4000 + 0x08
 ITHRESHOLD_S_BASE       = APLIC_S_BASE + 0x4000 + 0x08
 CLAIMI_M_BASE           = APLIC_M_BASE + 0x4000 + 0x1C
 CLAIMI_S_BASE           = APLIC_S_BASE + 0x4000 + 0x1C
-
 
 # interrupt sources macros
 # Just to make the code more readable
@@ -76,7 +89,6 @@ class COutputs:
 
 input                   = CInputs()
 outputs                 = COutputs()
-
 
 def set_reg(reg, hexa, reg_width, reg_num):
     reg     = (hexa << reg_width*reg_num)
@@ -166,8 +178,8 @@ async def test_every_register(dut):
     await Timer(4, units="ns")
 
     # rectified value that goes into the register controller.
-    # Is expected to see intp 23 in in_clrip from M domain and 
-    # interrupt 14 in in_clrip from S domain
+    # Is expected to see intp 23 in in_clrip from S domain and 
+    # interrupt 14 in in_clrip from M domain
     dut.i_rectified_src.value = 0x804000
 
     # Make TARGET 14 in M domain, hart = 3, prio =  2
@@ -225,7 +237,202 @@ async def test_every_register(dut):
     axi_write_reg(dut, IFORCE_M_BASE, 1)
     await Timer(4, units="ns")
 
+async def test_sourcecfg(dut):
+    # Make source 14 active in M domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), EDGE1)
+    await Timer(4, units="ns")
 
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), EDGE1)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
+    
+    # undelegate intp 23 
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), EDGE1)
+    await Timer(4, units="ns")
+
+async def test_pending_registers(dut):
+    # Make source 14 active in M domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
+    await Timer(4, units="ns")
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
+    await Timer(4, units="ns")
+
+    #==============================================================
+    #                            SETIPNUM
+    #==============================================================
+    # Write value 14 for setipnum in M domain
+    axi_write_reg(dut, SETIPNUM_M_BASE, 14)
+    await Timer(4, units="ns")
+    # Write value 23 for setipnum in S domain
+    axi_write_reg(dut, SETIPNUM_S_BASE, 23)
+    await Timer(4, units="ns")
+    # Write value 7 for setipnum in M domain. 
+    # Is not expected to change since it is not active in this domain
+    axi_write_reg(dut, SETIPNUM_M_BASE, 7)
+    await Timer(4, units="ns")
+    # Write value 31 for setipnum in S domain. 
+    # Is not expected to change since it is not active in this domain
+    axi_write_reg(dut, SETIPNUM_S_BASE, 31)
+    await Timer(4, units="ns")
+    #==============================================================
+
+    #==============================================================
+    #                            CLRIPNUM
+    #==============================================================
+    # Write value 14 for clripnum in M domain
+    axi_write_reg(dut, CLRIPNUM_M_BASE, 14)
+    await Timer(4, units="ns")
+    # Write value 23 for clripnum in S domain
+    axi_write_reg(dut, CLRIPNUM_S_BASE, 23)
+    await Timer(4, units="ns")
+    # Write value 7 for clripnum in M domain. 
+    # Nothing happens
+    axi_write_reg(dut, CLRIPNUM_M_BASE, 7)
+    await Timer(4, units="ns")
+    #==============================================================
+
+    #==============================================================
+    #                         SETIP & CLRIP
+    #==============================================================
+    # write 0x800000 to setip (set interrupt 23) domain S
+    axi_write_reg(dut, SETIP_S_BASE, 0x800000)
+    await Timer(4, units="ns")
+    # write 0x800000 to inclrip (clear interrupt 23) domain S
+    axi_write_reg(dut, INCLRIP_S_BASE, 0x800000)
+    await Timer(4, units="ns")
+    # write 0x4000 to setip (set interrupt 14) domain M
+    axi_write_reg(dut, SETIP_M_BASE, 0x4000)
+    await Timer(4, units="ns")
+    # write 0x4000 to inclrip (clear interrupt 14) domain M
+    axi_write_reg(dut, INCLRIP_M_BASE, 0x4000)
+    await Timer(4, units="ns")
+    #==============================================================
+
+    #==============================================================
+    #                         IN_CLRIP   
+    #==============================================================
+    # rectified value that goes into the register controller.
+    # Is expected to see intp 23 in in_clrip from S domain and 
+    # interrupt 14 in in_clrip from M domain
+    dut.i_rectified_src.value = 0x804000
+    #==============================================================
+
+async def test_enable_registers(dut):
+    # Make source 14 active in M domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
+    await Timer(4, units="ns")
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
+    await Timer(4, units="ns")
+
+    #==============================================================
+    #                            SETIENUM
+    #==============================================================
+    # Write value 14 for setienum in M domain
+    axi_write_reg(dut, SETIENUM_M_BASE, 14)
+    await Timer(4, units="ns")
+    # Write value 23 for setienum in S domain
+    axi_write_reg(dut, SETIENUM_S_BASE, 23)
+    await Timer(4, units="ns")
+    # Write value 7 for setienum in M domain. 
+    # Is not expected to change since it is not active in this domain
+    axi_write_reg(dut, SETIENUM_M_BASE, 7)
+    await Timer(4, units="ns")
+    # Write value 31 for setienum in S domain. 
+    # Is not expected to change since it is not active in this domain
+    axi_write_reg(dut, SETIENUM_S_BASE, 31)
+    await Timer(4, units="ns")
+    #==============================================================
+
+    #==============================================================
+    #                            CLRIENUM
+    #==============================================================
+    # Write value 14 for clrienum in M domain
+    axi_write_reg(dut, CLRIENUM_M_BASE, 14)
+    await Timer(4, units="ns")
+    # Write value 23 for clrienum in S domain
+    axi_write_reg(dut, CLRIENUM_S_BASE, 23)
+    await Timer(4, units="ns")
+    # Write value 7 for clrienum in M domain. 
+    # Nothing happens
+    axi_write_reg(dut, CLRIENUM_M_BASE, 7)
+    await Timer(4, units="ns")
+    #==============================================================
+
+    #==============================================================
+    #                         SETIE & CLRIE
+    #==============================================================
+    # write 0x800000 to setie (set interrupt 23) domain M
+    # Nothing should happen because intp 23 belongs to domain S
+    axi_write_reg(dut, SETIE_M_BASE, 0x800000)
+    await Timer(4, units="ns")
+    # write 0x800000 to setie (set interrupt 23) domain S
+    axi_write_reg(dut, SETIE_S_BASE, 0x800000)
+    await Timer(4, units="ns")
+    # write 0x800000 to clrie (clear interrupt 23) domain S
+    axi_write_reg(dut, CLRIE_S_BASE, 0x800000)
+    await Timer(4, units="ns")
+    # write 0x4000 to setie (set interrupt 14) domain M
+    axi_write_reg(dut, SETIE_M_BASE, 0x4000)
+    await Timer(4, units="ns")
+    # write 0x4000 to clrie (clear interrupt 14) domain M
+    axi_write_reg(dut, CLRIE_M_BASE, 0x4000)
+    await Timer(4, units="ns")
+    #==============================================================
+
+async def test_target(dut):
+    # Make source 14 active in M domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
+    await Timer(4, units="ns")
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
+    await Timer(4, units="ns")
+
+    # Make TARGET 14 in M domain, hart = 3, prio =  2
+    axi_write_reg(dut, TARGET_M_BASE+(TARGET_OFF * 13), (3 << 18) | (2 << 0))
+    await Timer(4, units="ns")
+    # Make TARGET 23 in S domain, hart = 2, prio = 1
+    axi_write_reg(dut, TARGET_S_BASE+(TARGET_OFF * 22), (2 << 18) | (1 << 0))
+    await Timer(4, units="ns")
+    # Make TARGET 14 in S domain, hart = 2, prio =  1
+    # IT SHOULD NOT TAKE EFFECT!!!
+    axi_write_reg(dut, TARGET_S_BASE+(TARGET_OFF * 13), (3 << 18) | (2 << 0))
+    await Timer(4, units="ns")
+
+async def test_idc_registers(dut):
+    # Make idelivery active in M domain
+    axi_write_reg(dut, IDELIVERY_M_BASE, 1)
+    await Timer(4, units="ns")
+    # Make idelivery active in S domain
+    axi_write_reg(dut, IDELIVERY_S_BASE, 1)
+    await Timer(4, units="ns")
+
+    # Make ithreshold 1 in M domain
+    axi_write_reg(dut, ITHRESHOLD_M_BASE, 1)
+    await Timer(4, units="ns")
+    # Make ithreshold 2 in S domain
+    axi_write_reg(dut, ITHRESHOLD_S_BASE, 2)
+    await Timer(4, units="ns")
+
+    # Force an interrupt by writing to iforce
+    axi_write_reg(dut, IFORCE_M_BASE, 1)
+    await Timer(4, units="ns")
 
 async def generate_clock(dut):
     """Generate clock pulses."""
@@ -254,7 +461,6 @@ async def regctl_unit_test(dut):
     dut.ni_rst.value = 1
     await Timer(1, units="ns")
 
-    # await cocotb.start(test_domaincfg(dut))
-    await cocotb.start(test_every_register(dut))
+    await cocotb.start(test_idc_registers(dut))
     
     await Timer(10000, units="ns")

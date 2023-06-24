@@ -42,7 +42,7 @@ module aplic_domain_notifier #(
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_setip_q       ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_setie_q       ,
     input   logic [NR_SRC-1:1][31:0]                                i_target_q      ,
-    input   logic [NR_DOMAINS-1:0][NR_REG:0][NR_BITS_SRC-1:0]       i_active        ,
+    input   logic [NR_SRC-1:1]                                      i_intp_domain   ,
     `ifdef DIRECT_MODE
     /** interface for direct mode */
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_idelivery     ,
@@ -92,7 +92,7 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
                 /** Check if the interrupt is pending and enabled, active in the domain, 
                     and is also the higher (lower number) priority*/
                 if (i_setip_q[j/32][j%32] && i_setie_q[j/32][j%32] &&
-                    i_active[i][j/32][j%32] &&
+                    (i_intp_domain[j] == i[0]) &&
                     (i_target_q[j][IPRIOLEN-1:0] < prev_higher_prio[i][IPRIOLEN-1:0])) begin
                     intp_id[i]          = j[9:0];
                     intp_prio[i]        = i_target_q[j][7:0];
