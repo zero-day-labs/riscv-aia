@@ -22,6 +22,11 @@ module aplic_top_minimal_wrapper #(
 reg_intf::reg_intf_req_a32_d32                          i_req;
 reg_intf::reg_intf_resp_d32                             o_resp;
 
+`ifdef MSI_MODE
+ariane_axi::req_t                                       req_msi;          
+ariane_axi::resp_t                                      resp_msi;
+`endif
+
 assign i_req.addr   = reg_intf_req_a32_d32_addr;
 assign i_req.write  = reg_intf_req_a32_d32_write;
 assign i_req.wdata  = reg_intf_req_a32_d32_wdata;
@@ -47,7 +52,28 @@ aplic_top #(
    .o_resp_cfg          ( o_resp                            ),
    `ifdef DIRECT_MODE
    .o_Xeip_targets      ()
+   `elsif MSI_MODE
+   .o_req_msi           ( req_msi                           ),
+   .i_resp_msi          ( resp_msi                          )
    `endif
 );
 
+`ifdef MSI_MODE
+axi_lite_interface #(
+    .AXI_ADDR_WIDTH ( 64              ),
+    .AXI_DATA_WIDTH ( 64              ),
+    .AXI_ID_WIDTH   ( 4               )
+) axi_lite_interface_i (
+    .clk_i          ( i_clk           ),
+    .rst_ni         ( ni_rst          ),
+    .axi_req_i      ( req_msi         ),
+    .axi_resp_o     ( resp_msi        ),
+    .address_o      (                 ),
+    .en_o           (                 ),
+    .we_o           (                 ),
+    .be_o           (                 ),
+    .data_i         (                 ),
+    .data_o         (                 )
+);
+`endif
 endmodule

@@ -37,6 +37,9 @@ module aplic_domain_top #(
    `ifdef DIRECT_MODE
    /** Interrupt Notification to Harts. One per priv. level per hart. */
    output logic [NR_DOMAINS-1:0][NR_IDCs-1:0]   o_Xeip_targets
+   `elsif MSI_MODE
+   output  ariane_axi::req_t                    o_req_msi         ,
+   input   ariane_axi::resp_t                   i_resp_msi
    `endif
 );
 // ================== INTERCONNECTION SIGNALS =====================
@@ -47,12 +50,18 @@ module aplic_domain_top #(
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       setip_to_notifier   ;
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       setie_to_notifier   ;
    logic [NR_SRC-1:1][31:0]                                target              ;
+   `ifdef DIRECT_MODE
    logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                idelivery           ;
    logic [NR_DOMAINS-1:0][NR_IDCs-1:0][IPRIOLEN-1:0]       ithreshold          ; 
    logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                iforce              ;    
    logic [NR_DOMAINS-1:0][NR_IDCs-1:0][25:0]               topi                ;
    logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     topi_update         ;
-
+   `elsif MSI_MODE
+   logic [NR_DOMAINS-1:0][31:0]                            genmsi              ;
+   logic [NR_DOMAINS-1:0]                                  genmsi_sent         ;
+   logic                                                   forwarded_valid     ;
+   logic [10:0]                                            intp_forwd_id       ;
+   `endif
    /** Gateway signals */
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       rectified_src       ;
    logic [NR_DOMAINS-1:0]                                  domaincfgDM         ;
@@ -102,6 +111,13 @@ module aplic_domain_top #(
       .o_topi_sugg            ( topi                  ),    
       .o_topi_update          ( topi_update           ),    
       .o_Xeip_targets         ( o_Xeip_targets        )
+   `elsif MSI_MODE
+      .i_genmsi               ( genmsi                ),   
+      .o_genmsi_sent          ( genmsi_sent           ),      
+      .o_forwarded_valid      ( forwarded_valid       ),            
+      .o_intp_forwd_id        ( intp_forwd_id         ),         
+      .o_req                  ( o_req_msi             ),
+      .i_resp                 ( i_resp_msi            )
    `endif
    ); // End of notifier instance
 // ================================================================
@@ -140,6 +156,11 @@ module aplic_domain_top #(
       .o_iforce               ( iforce                ),
       .i_topi                 ( topi                  ),
       .i_topi_update          ( topi_update           )
+   `elsif MSI_MODE
+      .o_genmsi               ( genmsi                ),
+      .i_genmsi_sent          ( genmsi_sent           ),   
+      .i_forwarded_valid      ( forwarded_valid       ),         
+      .i_intp_forwd_id        ( intp_forwd_id         )      
    `endif
    );
 // ================================================================

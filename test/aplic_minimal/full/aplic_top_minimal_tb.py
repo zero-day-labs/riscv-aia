@@ -42,6 +42,10 @@ SETIENUM_S_BASE         = APLIC_S_BASE + 0x1EDC
 CLRIENUM_M_BASE         = APLIC_M_BASE + 0x1FDC
 CLRIENUM_S_BASE         = APLIC_S_BASE + 0x1FDC
 
+# Genmsi macros
+GENMSI_M_BASE           = APLIC_M_BASE + 0x3000
+GENMSI_S_BASE           = APLIC_S_BASE + 0x3000
+
 # IDC macros
 IDELIVERY_M_BASE        = APLIC_M_BASE + 0x4000 + 0x00
 IDELIVERY_S_BASE        = APLIC_S_BASE + 0x4000 + 0x00
@@ -96,6 +100,70 @@ def axi_read_reg(dut, addr):
 
     outputs.reg_intf_resp_d32_rdata = dut.reg_intf_resp_d32_rdata.value
     return outputs.reg_intf_resp_d32_rdata 
+
+async def test_aplic_msi_mode(dut):
+    # Enable M domain in direct mode
+    axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+    # Enable S domain in direct mode
+    axi_write_reg(dut, DOMAINCFG_S_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+
+    # Make source 14 active in M domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
+    await Timer(4, units="ns")
+    # delegate intp 23 to S domain
+    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
+    await Timer(4, units="ns")
+    # Make source 23 active in S domain, edge-sensitive rising edge
+    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
+    await Timer(4, units="ns")
+
+    # Make TARGET 14 in M domain, EEID = 14
+    axi_write_reg(dut, TARGET_M_BASE+(TARGET_OFF * 13), (14 << 0))
+    await Timer(4, units="ns")
+    # Make TARGET 23 in S domain, EEID = 23
+    axi_write_reg(dut, TARGET_S_BASE+(TARGET_OFF * 22), (23 << 0))
+    await Timer(4, units="ns")
+
+    # Write value 14 for setienum in M domain
+    axi_write_reg(dut, SETIENUM_M_BASE, 14)
+    await Timer(4, units="ns")
+    # Write value 23 for setienum in S domain
+    axi_write_reg(dut, SETIENUM_S_BASE, 23)
+    await Timer(4, units="ns")
+
+    # Write value 14 for setipnum in M domain
+    axi_write_reg(dut, SETIPNUM_M_BASE, 14)
+    await Timer(4, units="ns")
+    # Write to domain (or other register really) to reset the write lines
+    # This is a bug in the tests and not the hw
+    # We intend to fix this in the future :) 
+    axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+    
+    # set interrupt 23 (to trigger the raising edge)
+    source                = 0
+    source                = set_or_reg(source, 1, 1, 23)
+    dut.i_sources.value   = source
+    await Timer(4, units="ns")
+    # reset source lines
+    source                = 0
+    dut.i_sources.value   = source
+    await Timer(10, units="ns")
+
+    # write 14 to genmsi in M domain to trigger an MSI for intp 14
+    axi_write_reg(dut, GENMSI_M_BASE, (14 << 0))
+    await Timer(4, units="ns")
+    # write 23 to genmsi in S domain to trigger an MSI for intp 23
+    axi_write_reg(dut, GENMSI_S_BASE, (23 << 0))
+    await Timer(4, units="ns")
+    # Write to domain (or other register really) to reset the write lines
+    # This is a bug in the tests and not the hw
+    # We intend to fix this in the future :) 
+    axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+    
 
 async def test_aplic_direct_mode(dut):
     # Enable M domain in direct mode
@@ -252,6 +320,6 @@ async def regctl_unit_test(dut):
     dut.ni_rst.value = 1
     await Timer(1, units="ns")
 
-    await cocotb.start(test_aplic_direct_mode_sourcecfg(dut))
+    await cocotb.start(test_aplic_msi_mode(dut))
     
     await Timer(10000, units="ns")

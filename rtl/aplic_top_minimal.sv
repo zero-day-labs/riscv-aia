@@ -34,10 +34,15 @@ module aplic_top #(
    `ifdef DIRECT_MODE
    /** Interrupt Notification to Targets. One per priv. level. */
    output logic [(NR_DOMAINS*NR_IDCs)-1:0]      o_Xeip_targets
+   `elsif MSI_MODE
+   output  ariane_axi::req_t                    o_req_msi            ,
+   input   ariane_axi::resp_t                   i_resp_msi
    `endif
 ); /** End of APLIC top interface */
 
+`ifdef DIRECT_MODE
 logic [NR_DOMAINS-1:0][NR_IDCs-1:0]   Xeip_targets;
+`endif
 
 /** 
  * A 2-level synchronyzer to avoid metastability in the irq line
@@ -68,13 +73,18 @@ aplic_domain_top #(
    .i_irq_sources    ( sync_irq_src[1]    ),
    `ifdef DIRECT_MODE
    .o_Xeip_targets   ( Xeip_targets       )
+   `elsif MSI_MODE
+   .o_req_msi        ( o_req_msi          ),
+   .i_resp_msi       ( i_resp_msi         )
    `endif
 );
 
+`ifdef DIRECT_MODE
 for (genvar i = 0; i < NR_DOMAINS; i++) begin
    for (genvar j = 0; j < NR_IDCs; j++) begin
       assign o_Xeip_targets[j + (i*NR_IDCs)] = Xeip_targets[i][j];      
    end
 end
+`endif
 
 endmodule

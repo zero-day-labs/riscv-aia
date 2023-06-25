@@ -31,6 +31,11 @@ module aplic_domain_notifier #(
     parameter int                                                   NR_SRC          = 32,
     parameter int                                                   NR_IDCs         = 1,
     parameter int                                                   MIN_PRIO        = 6,
+    // MSI mode parameters
+    parameter int unsigned                                          AXI_ADDR_WIDTH  = 64,
+    parameter int unsigned                                          AXI_DATA_WIDTH  = 64,
+    parameter unsigned                                              IMSIC_M_ADDR_TARGET= 64'h24000000,
+    parameter unsigned                                              IMSIC_S_ADDR_TARGET= 64'h28000000,
     // DO NOT EDIT BY PARAMETER
     parameter int                                                   NR_BITS_SRC     = (NR_SRC > 32) ? 32 : NR_SRC,
     parameter int                                                   NR_REG          = (NR_SRC-1)/32,
@@ -51,19 +56,19 @@ module aplic_domain_notifier #(
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0][25:0]               o_topi_sugg     ,
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     o_topi_update   ,
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     o_Xeip_targets  
-    // `elsif MSI_MODE
-    // /** interface for MSI mode */
-    // input   logic [31:0]                            i_genmsi         ,
-    // output  logic                                   o_genmsi_sent    ,
-    // output  logic                                   o_forwarded_valid,
-    // output  logic [10:0]                            o_intp_forwd_id  ,
-    // output  logic                                   o_busy           ,
-    // output  ariane_axi::req_t                       o_req            ,
-    // input   ariane_axi::resp_t                      i_resp
+    `elsif MSI_MODE
+    /** interface for MSI mode */
+    input   logic [NR_DOMAINS-1:0][31:0]                            i_genmsi         ,
+    output  logic [NR_DOMAINS-1:0]                                  o_genmsi_sent    ,
+    output  logic                                                   o_forwarded_valid,
+    output  logic [10:0]                                            o_intp_forwd_id  ,
+    output  ariane_axi::req_t                                       o_req            ,
+    input   ariane_axi::resp_t                                      i_resp
     `endif
 );
 
 localparam TARGET_HART_IDX          = 18;
+localparam TARGET_GUEST_IDX_MASK    = 64'h3F000;
 localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
 
 `ifdef DIRECT_MODE
@@ -122,6 +127,89 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         end
     end
 
+`elsif MSI_MODE
+    // signals from AXI 4 Lite
+    logic [AXI_ADDR_WIDTH-1:0] addr_d, addr_q;
+    logic [AXI_DATA_WIDTH-1:0] data_d, data_q;
+    logic [3:0]                id_i;
+
+    logic                      axi_busy, axi_busy_q;
+    logic [10:0]               intp_forwd_id_d, intp_forwd_id_q;
+    logic                      ready_i;
+    logic                      forwarded_valid;
+    logic [NR_DOMAINS-1:0]     genmsi_sent;
+
+    always_comb begin : find_pen_en_intp
+        ready_i             = '0;
+        intp_forwd_id_d     = intp_forwd_id_q;
+        forwarded_valid     = '0;
+        genmsi_sent         = '0;
+        data_d              = data_q;
+        addr_d              = addr_q;
+        id_i                = '0;
+
+        for (int i = 1 ; i < NR_SRC ; i++) begin
+            /** If the interrupt is pending and enabled in its domain*/
+            if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32] && i_domaincfgIE[i_intp_domain[i]] && !axi_busy_q) begin
+                intp_forwd_id_d = i[10:0];
+                data_d          = {{64-11{1'b0}}, i_target_q[i][10:0]};
+                addr_d          = (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET :
+                                  IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
+                id_i            = {3'b0, i_intp_domain[i]};
+                ready_i         = 1'b1;
+                forwarded_valid = 1'b1;
+            end
+        end
+
+        /** Lastly, check if genmsi wants to send a MSI*/
+        for (int i = 0; i < NR_DOMAINS; i++) begin
+            if (i_genmsi[i][12] && !axi_busy_q) begin
+                intp_forwd_id_d = '0;
+                data_d          = {32'b0, {21{1'b0}}, i_genmsi[i][10:0]};
+                addr_d          = (!i[0]) ? IMSIC_M_ADDR_TARGET :
+                                  IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
+                id_i            = {3'b0, i[0]};
+                genmsi_sent[i]  = 1'b1;
+                ready_i         = 1'b1;
+            end
+        end
+    end
+
+    assign o_genmsi_sent        = genmsi_sent;
+    assign o_forwarded_valid    = forwarded_valid;
+    assign o_intp_forwd_id      = intp_forwd_id_q;
+
+    // -----------------------------
+    // AXI Interface
+    // -----------------------------
+    axi_lite_write_master#(
+        .AXI_ADDR_WIDTH ( AXI_ADDR_WIDTH    ),
+        .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    )
+    ) axi_lite_write_master_i (
+        .clk_i          ( i_clk             ),
+        .rst_ni         ( ni_rst            ),
+        .ready_i        ( ready_i           ),
+        .id_i           ( id_i              ),
+        .addr_i         ( addr_d            ),
+        .data_i         ( data_d            ),
+        .busy_o         ( axi_busy          ),
+        .req_o          ( o_req             ),
+        .resp_i         ( i_resp            )
+    );
+
+    always_ff @(  posedge i_clk, negedge ni_rst ) begin
+        if (!ni_rst) begin
+            axi_busy_q      <= '0;
+            intp_forwd_id_q <= '0;
+            data_q          <= '0;
+            addr_q          <= '0;
+        end else begin
+            axi_busy_q      <= axi_busy;
+            intp_forwd_id_q <= intp_forwd_id_d;
+            data_q          <= data_d;
+            addr_q          <= addr_d;
+        end
+    end
 `endif
 
 endmodule

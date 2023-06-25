@@ -65,10 +65,10 @@ module aplic_domain_regctl #(
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     i_topi_update
 `else
     /**  interface for msi mode */
-    input   logic                                       i_forwarded_valid     ,
-    input   logic [10:0]                                i_intp_forwd_id   ,
-    output  logic [31:0]                                o_genmsi,
-    input   logic                                       i_genmsi_sent,
+    output  logic [NR_DOMAINS-1:0][31:0]                            o_genmsi            ,
+    input   logic [NR_DOMAINS-1:0]                                  i_genmsi_sent       ,
+    input   logic                                                   i_forwarded_valid   ,
+    input   logic [10:0]                                            i_intp_forwd_id     
 `endif
 );
 
@@ -595,7 +595,6 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
 
     assign setie_d = setie_mux0_o & active;
     assign o_setie = setie_q;
-
 // ================================================================
 
 // =========================== TARGET =============================
@@ -640,6 +639,10 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
                     o_claimed_or_forwarded[topi_q[i][j][16 +: NR_SRC_W]/32][topi_q[i][j][16 +: NR_SRC_W]%32] = 1'b1;
                 end 
             end 
+        end
+    `elsif MSI_MODE
+        if (i_forwarded_valid) begin
+            o_claimed_or_forwarded[i_intp_forwd_id/32][i_intp_forwd_id%32] = 1'b1;
         end
     `endif
   end
@@ -689,15 +692,17 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
     genmsi_d = genmsi_q;
 
     for (int i = 0; i < NR_DOMAINS; i++) begin
-        if (genmsi_we[i] && ~genmsi_q[i][12] && (genmsi_o[i][10:0] != '0)) begin
+        if (genmsi_we[i] && !genmsi_q[i][12] && (genmsi_o[i][10:0] != '0)) begin
             genmsi_d[i] = {genmsi_o[i][31:18], {5{1'b0}}, 1'b1, 1'b0, genmsi_o[i][10:0]};
         end
-        if (i_genmsi_sent) begin
+        if (i_genmsi_sent[i]) begin
             /** clear the busy bit */
             genmsi_d[i] = genmsi_q[i] & ~(32'h1<<12);
         end
     end
   end
+
+  assign o_genmsi = genmsi_q;
   `endif
 // ================================================================
 
