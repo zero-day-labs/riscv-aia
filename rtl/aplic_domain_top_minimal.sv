@@ -129,8 +129,8 @@ module aplic_domain_top #(
       .NR_SRC                 ( NR_SRC                            ),      
       .MIN_PRIO               ( MIN_PRIO                          ),  
       .NR_IDCs                ( NR_IDCs                           ),
-      .reg_req_t              ( reg_intf::reg_intf_req_a32_d32    ),
-      .reg_rsp_t              ( reg_intf::reg_intf_resp_d32       )
+      .reg_req_t              ( reg_req_t                         ),
+      .reg_rsp_t              ( reg_rsp_t                         )
    ) i_aplic_domain_regctl_minimal (
       .i_clk                  ( i_clk                 ),
       .ni_rst                 ( ni_rst                ),
