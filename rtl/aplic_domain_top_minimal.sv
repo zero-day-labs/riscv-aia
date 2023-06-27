@@ -13,8 +13,14 @@
 *   See the License for the specific language governing permissions and
 *   limitations under the License.
 * 
-*   Description: This module is the APLIC domain.
-*                It is comprised by 3 submodules: gatway, notifier and register map.
+* Description: This module interconnects APLIC 3 submodules: gatway, notifier and register controller.
+*
+* NOTE: This module is part of minimal APLIC. Our minimal APLIC implements only
+*       two domains (M and S). From the AIA specification can be read (section 4.5):
+*       "APLIC implementations can exploit the fact that each source is ultimately active 
+*       in only one domain."
+*       As so, this minimal version implements only one domain and relies on logic to mask 
+*       the interrupt to the correct domain.
 */ 
 module aplic_domain_top #(
    parameter int                                NR_DOMAINS    = 2,

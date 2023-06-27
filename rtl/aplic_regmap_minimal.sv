@@ -14,11 +14,17 @@
 *   limitations under the License.
 *
 *   Name: APLIC domain register map for 2 domains
-*   Date: 2022-10-18 18:08:30.001661
 *   Author: F.Marques <fmarques_00@protonmail.com>
 * 
-*   Description: This module is a APLIC domain register map with 2 domains (M-level and S-level).
-*                For a given domain unused registers should be unconnected.
+* Description: This module is a APLIC domain register map with 2 domains (M-level and S-level).
+*              For a given domain, unused registers should be unconnected.
+*
+* NOTE: This module is part of minimal APLIC. Our minimal APLIC implements only
+*       two domains (M and S). From the AIA specification can be read (section 4.5):
+*       "APLIC implementations can exploit the fact that each source is ultimately active 
+*       in only one domain."
+*       As so, this minimal version implements only one domain and relies on logic to mask 
+*       the interrupt to the correct domain.
 */ 
 module aplic_regmap_minimal #(
    parameter int                                DOMAIN_M_ADDR     = 32'hc000000,

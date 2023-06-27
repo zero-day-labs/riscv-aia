@@ -13,8 +13,15 @@
 *   See the License for the specific language governing permissions and
 *   limitations under the License.
 * 
-*   Description: Top module for APLIC IP. Connects the three modules 
-                 that comprise the IP - Notifier, gateway and register controller.
+* Description:  Top module for APLIC IP. Instantiates the APLIC domains, and a 
+*               2-level synchronizer to prevent metastability on interrupt source lines.
+*
+* NOTE: This module is part of minimal APLIC. Our minimal APLIC implements only
+*       two domains (M and S). From the AIA specification can be read (section 4.5):
+*       "APLIC implementations can exploit the fact that each source is ultimately active 
+*       in only one domain."
+*       As so, this minimal version implements only one domain and relies on logic to mask 
+*       the interrupt to the correct domain.
 */ 
 module aplic_top #(
    parameter int                                NR_SRC     = 32      ,

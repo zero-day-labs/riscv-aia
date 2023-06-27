@@ -16,10 +16,12 @@
 * Description: This module is responsible for all the
 *              logic used to determine the registers value.
 *
-* Notes: The sourcecfg register needs to be implemented separatly for each domain. 
-*        As it is, creates a security breach where S domain can take control of 
-*        M domain interrupts even if they were not delegated.
-*
+* NOTE: This module is part of minimal APLIC. Our minimal APLIC implements only
+*       two domains (M and S). From the AIA specification can be read (section 4.5):
+*       "APLIC implementations can exploit the fact that each source is ultimately active 
+*       in only one domain."
+*       As so, this minimal version implements only one domain and relies on logic to mask 
+*       the interrupt to the correct domain.
 */
 
 module aplic_domain_regctl #(
