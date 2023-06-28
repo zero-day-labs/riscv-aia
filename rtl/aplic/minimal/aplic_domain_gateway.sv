@@ -1,5 +1,5 @@
 /** 
-*   Copyright 2023 Francisco Marques, Universidade do Minho
+*   Copyright © 2023 Francisco Marques & Zero-Day Labs, Lda.
 *
 *   Licensed under the Apache License, Version 2.0 (the "License");
 *   you may not use this file except in compliance with the License.

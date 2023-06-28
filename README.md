@@ -33,14 +33,6 @@ In the [documentation](doc/README.md) folder you can find information about APLI
 ### RTL
 The rtl folder houses all the modules that make up each of the IPs.
 
----
-
-**NOTE**
-
-This folder will be re-structured.
-
----
-
 ### Tests
 Under the tests folder, you can find unit tests of IPs intergration. The tests can easily be replicated by doing make inside the desired test.
 
@@ -48,7 +40,7 @@ Under the tests folder, you can find unit tests of IPs intergration. The tests c
 
 **NOTE**
 
-To ensure accurate test reproduction, it is crucial to verify the versions of the tools being utilized (verilator and cocotb). Failure to do so may result in inconsistencies and unreliable test results.**
+To ensure accurate test reproduction, it is crucial to verify the versions of the tools being utilized (verilator and cocotb). Failure to do so may result in inconsistencies and unreliable test results.
 
 ---
 
