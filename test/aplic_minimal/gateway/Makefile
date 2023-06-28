@@ -11,11 +11,16 @@ AXI_FOLDER = $(PWD)/../../../vendor/
 TEST_FOLDER = $(currdir) 
 SRC_FOLDER = $(PWD)/../../../rtl/
 WRAPPER_SRC = $(TEST_FOLDER)./wrap.sv
+APLIC_FOLDER = $(SRC_FOLDER)/aplic
+APLIC_COMMON_FOLDER = $(APLIC_FOLDER)/common
+APLIC_MINIMAL_FOLDER = $(APLIC_FOLDER)/minimal
+APLIC_SCALABLE_FOLDER = $(APLIC_FOLDER)/scalable
+
 VERILOG_SOURCES += $(AXI_FOLDER)reg_intf_pkg.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_defines.svh
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_domain_regctl_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_regmap_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_domain_gateway_minimal.sv
+VERILOG_SOURCES += $(APLIC_COMMON_FOLDER)/aplic_defines.svh
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_regctl.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_regmap.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_gateway.sv
 VERILOG_SOURCES += $(WRAPPER_SRC)
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file

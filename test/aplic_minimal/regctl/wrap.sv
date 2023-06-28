@@ -65,6 +65,7 @@ aplic_domain_regctl #(
     .o_sourcecfg            (),
     .o_sugg_setip           ( sugg_setip            ),
     .o_domaincfgDM          (),
+    .o_intp_domain          (),
     .o_active               ( active                ),
     .o_claimed_or_forwarded (),
     .i_intp_pen             ( bypass_gateway        ),
@@ -72,9 +73,8 @@ aplic_domain_regctl #(
     .o_domaincfgIE          (),
     .o_setip                (),
     .o_setie                (),
-    .o_target               ()
+    .o_target               (),
 `ifdef DIRECT_MODE
-    ,
     .o_idelivery            (),
     .o_ithreshold           (),
     .o_iforce               (),

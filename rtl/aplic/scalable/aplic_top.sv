@@ -38,9 +38,8 @@ module aplic_top #(
    output logic [(NR_IDCs*2)-1:0]          o_Xeip_targets
    /** interface for MSI mode */
    `elsif MSI_MODE
-   /**! TODO: Mudar nome para axi_msi_req/resp_aplic*/
-   output  ariane_axi::req_t               o_req,
-   input   ariane_axi::resp_t              i_resp
+   output  ariane_axi::req_t               o_req_msi,
+   input   ariane_axi::resp_t              i_resp_msi
    `endif
 ); /** End of APLIC top interface */
 
@@ -103,19 +102,19 @@ logic                           axi_1_busy;
 
 always_comb begin : basic_interconnect
    if (~axi_1_busy) begin
-      o_req.aw        = axi_req_s_domain.aw ;
-      o_req.aw_valid  = axi_req_s_domain.aw_valid;
-      o_req.w         = axi_req_s_domain.w  ;
-      o_req.w_valid   = axi_req_s_domain.w_valid ;
-      o_req.b_ready   = axi_req_s_domain.b_ready ;
-      axi_resp_s_domain.w_ready  = i_resp.w_ready;
+      o_req_msi.aw        = axi_req_s_domain.aw ;
+      o_req_msi.aw_valid  = axi_req_s_domain.aw_valid;
+      o_req_msi.w         = axi_req_s_domain.w  ;
+      o_req_msi.w_valid   = axi_req_s_domain.w_valid ;
+      o_req_msi.b_ready   = axi_req_s_domain.b_ready ;
+      axi_resp_s_domain.w_ready  = i_resp_msi.w_ready;
    end else begin
-      o_req.aw        = axi_req_m_domain.aw ;
-      o_req.aw_valid  = axi_req_m_domain.aw_valid;
-      o_req.w         = axi_req_m_domain.w  ;
-      o_req.w_valid   = axi_req_m_domain.w_valid ;
-      o_req.b_ready   = axi_req_m_domain.b_ready ;
-      axi_resp_m_domain.w_ready  = i_resp.w_ready;
+      o_reqo_req_msi.aw        = axi_req_m_domain.aw ;
+      o_reqo_req_msi.aw_valid  = axi_req_m_domain.aw_valid;
+      o_reqo_req_msi.w         = axi_req_m_domain.w  ;
+      o_reqo_req_msi.w_valid   = axi_req_m_domain.w_valid ;
+      o_reqo_req_msi.b_ready   = axi_req_m_domain.b_ready ;
+      axi_resp_m_domain.w_ready  = i_resp_msi.w_ready;
    end
 end
 `endif

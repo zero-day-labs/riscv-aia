@@ -14,5 +14,5 @@
 *   limitations under the License.
 */ 
 
-`define MSI_MODE
-// `define DIRECT_MODE
+// `define MSI_MODE
+`define DIRECT_MODE

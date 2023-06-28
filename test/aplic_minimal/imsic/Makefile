@@ -11,22 +11,32 @@ AXI_FOLDER = $(PWD)/../../../vendor/
 TEST_FOLDER = $(currdir) 
 SRC_FOLDER = $(PWD)/../../../rtl/
 WRAPPER_SRC = $(TEST_FOLDER)./wrap.sv
+APLIC_FOLDER = $(SRC_FOLDER)/aplic
+APLIC_COMMON_FOLDER = $(APLIC_FOLDER)/common
+APLIC_MINIMAL_FOLDER = $(APLIC_FOLDER)/minimal
+APLIC_SCALABLE_FOLDER = $(APLIC_FOLDER)/scalable
+IMSIC_FOLDER = $(SRC_FOLDER)/imsic
 
+# AXI vendor files
 VERILOG_SOURCES += $(AXI_FOLDER)reg_intf_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)ariane_axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_lite_slave.sv
 
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_defines.svh
-VERILOG_SOURCES += $(SRC_FOLDER)/axi4_lite_write_master.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_domain_regctl_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_regmap_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_domain_notifier_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_domain_gateway_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_domain_top_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)aplic_top_minimal.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/imsic_regmap.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/imsic_top.sv
+# APLIC source files
+VERILOG_SOURCES += $(APLIC_COMMON_FOLDER)/aplic_defines.svh
+VERILOG_SOURCES += $(APLIC_COMMON_FOLDER)/axi4_lite_write_master.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_regctl.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_regmap.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_gateway.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_notifier.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_top.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_top.sv
+
+# IMSIC source files
+VERILOG_SOURCES += $(IMSIC_FOLDER)/imsic_regmap.sv
+VERILOG_SOURCES += $(IMSIC_FOLDER)/imsic_top.sv
+
 VERILOG_SOURCES += $(WRAPPER_SRC)
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
