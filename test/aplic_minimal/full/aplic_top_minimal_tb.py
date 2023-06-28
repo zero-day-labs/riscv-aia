@@ -193,9 +193,9 @@ async def test_aplic_direct_mode(dut):
     # Other interrupts are delegated to S domain
     for i in range(1, 32):
         if i == 14:
-            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * 13), EDGE1)
+            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * (i-1)), EDGE1)
         elif i == 3:
-            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * 3), EDGE1)
+            axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * (i-1)), EDGE1)
         else:
             axi_write_reg(dut, SOURCECFG_M_BASE + (SOURCECFG_OFF * (i-1)), DELEGATE_SRC)
         await Timer(4, units="ns")
