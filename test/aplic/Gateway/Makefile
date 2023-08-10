@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright © 2023 Francisco Marques & Zero-Day Labs, Lda. All rights reserved.
+#
+# Author: F.Marques <fmarques_00@protonmail.com>
+
 # Gateway Makefile
 
 CLEAN =

@@ -1,26 +1,17 @@
 /** 
-*   Copyright © 2023 Francisco Marques & Zero-Day Labs, Lda.
-*
-*   Licensed under the Apache License, Version 2.0 (the "License");
-*   you may not use this file except in compliance with the License.
-*   You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-*   Unless required by applicable law or agreed to in writing, software
-*   distributed under the License is distributed on an "AS IS" BASIS,
-*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*   See the License for the specific language governing permissions and
-*   limitations under the License.
+* Copyright 2023 Francisco Marques & Zero-Day Labs, Lda
+* SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
 * 
-* Description: This module interconnects APLIC 3 submodules: gatway, notifier and register controller.
+* Author: F.Marques <fmarques_00@protonmail.com>
+* 
+* Description:    This module interconnects APLIC 3 submodules: gatway, notifier and register controller.
 *
-* NOTE: This module is part of minimal APLIC. Our minimal APLIC implements only
-*       two domains (M and S). From the AIA specification can be read (section 4.5):
-*       "APLIC implementations can exploit the fact that each source is ultimately active 
-*       in only one domain."
-*       As so, this minimal version implements only one domain and relies on logic to mask 
-*       the interrupt to the correct domain.
+* NOTE:           This module is part of minimal APLIC. Our minimal APLIC implements only
+*                 two domains (M and S). From the AIA specification can be read (section 4.5):
+*                 "APLIC implementations can exploit the fact that each source is ultimately active 
+*                 in only one domain."
+*                 As so, this minimal version implements only one domain and relies on logic to mask 
+*                 the interrupt to the correct domain.
 */ 
 module aplic_domain_top #(
    parameter int                                NR_DOMAINS    = 2,

@@ -1,5 +1,9 @@
 # Advanced Interrupt Architecture IP
 
+## License
+
+This work is licensed under a Apache-2.0 License and Solderpad Hardware License v2.1 (Apache-2.0 WITH SHL-2.1). See the [Apache LICENSE](./LICENSE.Apache) and [Solderpad LICENSE](./LICENSE.Solderpad) files for details.
+
 ## Disclaimer
 This is a work in progress.
 

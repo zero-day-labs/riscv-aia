@@ -1,17 +1,8 @@
 /** 
-*   Copyright © 2023 Francisco Marques & Zero-Day Labs, Lda.
-*
-*   Licensed under the Apache License, Version 2.0 (the "License");
-*   you may not use this file except in compliance with the License.
-*   You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-*   Unless required by applicable law or agreed to in writing, software
-*   distributed under the License is distributed on an "AS IS" BASIS,
-*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*   See the License for the specific language governing permissions and
-*   limitations under the License.
+* Copyright 2023 Francisco Marques & Zero-Day Labs, Lda
+* SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+* 
+* Author: F.Marques <fmarques_00@protonmail.com>
 *
 * Description: The APLIC domain gateway is the module encharge of
 *              receiving the current setip array, and the new setip 
@@ -25,7 +16,7 @@
 *              As so, this minimal version implements only one domain and relies on logic to mask 
 *              the interrupt to the correct domain.
 * NOTE2:       This gateway implements only one source mode (raising edge1) besides the inactive mode 
-               in order to reduce the hardware utilization
+*              in order to reduce the hardware utilization
 */
 module aplic_domain_gateway #(
     parameter int                                               NR_SRC        = 32,
