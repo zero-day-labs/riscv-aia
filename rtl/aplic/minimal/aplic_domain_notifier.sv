@@ -29,10 +29,10 @@ module aplic_domain_notifier #(
     parameter int                                                   NR_IDCs         = 1,
     parameter int                                                   MIN_PRIO        = 6,
     // MSI mode parameters
-    parameter int unsigned                                          AXI_ADDR_WIDTH  = 64,
-    parameter int unsigned                                          AXI_DATA_WIDTH  = 64,
-    parameter unsigned                                              IMSIC_M_ADDR_TARGET= 64'h24000000,
-    parameter unsigned                                              IMSIC_S_ADDR_TARGET= 64'h28000000,
+    parameter int unsigned                                          AXI_ADDR_WIDTH      = 64,
+    parameter int unsigned                                          AXI_DATA_WIDTH      = 64,
+    parameter unsigned                                              IMSIC_M_ADDR_TARGET = 64'h24000000,
+    parameter unsigned                                              IMSIC_S_ADDR_TARGET = 64'h28000000,
     // DO NOT EDIT BY PARAMETER
     parameter int                                                   NR_BITS_SRC     = (NR_SRC > 32) ? 32 : NR_SRC,
     parameter int                                                   NR_REG          = (NR_SRC-1)/32,
@@ -44,10 +44,10 @@ module aplic_domain_notifier #(
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_setip_q       ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_setie_q       ,
     input   logic [NR_SRC-1:1][31:0]                                i_target_q      ,
-    input   logic [NR_SRC-1:1]                                      i_intp_domain   ,
+    input   logic [NR_SRC-1:1]                                      i_intp_domain   
     `ifdef DIRECT_MODE
     /** interface for direct mode */
-    input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_idelivery     ,
+    ,input  logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_idelivery     ,
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_iforce        ,
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][IPRIOLEN-1:0]       i_ithreshold    ,
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0][25:0]               o_topi_sugg     ,
@@ -55,7 +55,7 @@ module aplic_domain_notifier #(
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     o_Xeip_targets  
     `elsif MSI_MODE
     /** interface for MSI mode */
-    input   logic [NR_DOMAINS-1:0][31:0]                            i_genmsi         ,
+    ,input  logic [NR_DOMAINS-1:0][31:0]                            i_genmsi         ,
     output  logic [NR_DOMAINS-1:0]                                  o_genmsi_sent    ,
     output  logic                                                   o_forwarded_valid,
     output  logic [10:0]                                            o_intp_forwd_id  ,
