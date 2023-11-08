@@ -27,7 +27,6 @@ module aplic_domain_notifier #(
     parameter int unsigned                          AXI_ADDR_WIDTH  = 64,
     parameter int unsigned                          AXI_DATA_WIDTH  = 64,
     parameter unsigned                              IMSIC_ADDR_TARGET= 64'h24000000,
-    parameter unsigned                              ID              = 4'b0001,
     // DO NOT EDIT BY PARAMETER
     parameter int                                   NR_BITS_SRC     = (NR_SRC > 32) ? 32 : NR_SRC,
     parameter int                                   NR_REG          = (NR_SRC-1)/32,
@@ -112,9 +111,6 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     logic                      ready_i;
     logic                      genmsi_sent;
     logic                      axi_busy, axi_busy_q;
-    //logic [3:0]                id_i;
-
-    //assign id_i = ID;
 
     always_comb begin : find_highest_pen_en
         ready_i             = '0;
@@ -157,7 +153,6 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         .clk_i          ( i_clk             ),
         .rst_ni         ( ni_rst            ),
         .ready_i        ( ready_i           ),
-        //.id_i           ( id_i              ),
         .addr_i         ( addr_i            ),
         .data_i         ( data_i            ),
         .busy_o         ( axi_busy          ),

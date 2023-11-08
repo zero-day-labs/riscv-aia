@@ -121,7 +121,6 @@ aplic_domain_top #(
    .APLIC("NON-LEAF"),
    .MODE(MODE),
    .IMSIC_ADDR_TARGET(64'h24000000),
-   .ID(4'b0001),
    .reg_req_t(reg_req_t),
    .reg_rsp_t(reg_rsp_t)
 ) i_aplic_m_domain_top(
@@ -148,7 +147,6 @@ aplic_domain_top #(
    .APLIC("LEAF"),
    .MODE(MODE),
    .IMSIC_ADDR_TARGET(64'h28000000),
-   .ID(4'b0010),
    .reg_req_t(reg_req_t),
    .reg_rsp_t(reg_rsp_t)
 ) i_aplic_s_domain_top(

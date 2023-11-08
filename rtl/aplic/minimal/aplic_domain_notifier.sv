@@ -29,10 +29,10 @@ module aplic_domain_notifier #(
     parameter int                                                   NR_IDCs         = 1,
     parameter int                                                   MIN_PRIO        = 6,
     // MSI mode parameters
-    parameter int unsigned                                          AXI_ADDR_WIDTH      = 64,
-    parameter int unsigned                                          AXI_DATA_WIDTH      = 64,
-    parameter unsigned                                              IMSIC_M_ADDR_TARGET = 64'h24000000,
-    parameter unsigned                                              IMSIC_S_ADDR_TARGET = 64'h28000000,
+    parameter int unsigned                                          AXI_ADDR_WIDTH  = 64,
+    parameter int unsigned                                          AXI_DATA_WIDTH  = 64,
+    parameter unsigned                                              IMSIC_M_ADDR_TARGET= 64'h24000000,
+    parameter unsigned                                              IMSIC_S_ADDR_TARGET= 64'h28000000,
     // DO NOT EDIT BY PARAMETER
     parameter int                                                   NR_BITS_SRC     = (NR_SRC > 32) ? 32 : NR_SRC,
     parameter int                                                   NR_REG          = (NR_SRC-1)/32,
@@ -128,7 +128,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     // signals from AXI 4 Lite
     logic [AXI_ADDR_WIDTH-1:0] addr_d, addr_q;
     logic [AXI_DATA_WIDTH-1:0] data_d, data_q;
-    logic [3:0]                id_i;
 
     logic                      axi_busy, axi_busy_q;
     logic [10:0]               intp_forwd_id_d, intp_forwd_id_q;
@@ -143,7 +142,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         genmsi_sent         = '0;
         data_d              = data_q;
         addr_d              = addr_q;
-        id_i                = '0;
 
         for (int i = 1 ; i < NR_SRC ; i++) begin
             /** If the interrupt is pending and enabled in its domain*/
@@ -152,7 +150,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
                 data_d          = {{64-11{1'b0}}, i_target_q[i][10:0]};
                 addr_d          = (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET :
                                   IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
-                id_i            = {3'b0, i_intp_domain[i]};
                 ready_i         = 1'b1;
                 forwarded_valid = 1'b1;
             end
@@ -165,7 +162,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
                 data_d          = {32'b0, {21{1'b0}}, i_genmsi[i][10:0]};
                 addr_d          = (!i[0]) ? IMSIC_M_ADDR_TARGET :
                                   IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
-                id_i            = {3'b0, i[0]};
                 genmsi_sent[i]  = 1'b1;
                 ready_i         = 1'b1;
             end
@@ -186,7 +182,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         .clk_i          ( i_clk             ),
         .rst_ni         ( ni_rst            ),
         .ready_i        ( ready_i           ),
-        .id_i           ( id_i              ),
         .addr_i         ( addr_d            ),
         .data_i         ( data_d            ),
         .busy_o         ( axi_busy          ),

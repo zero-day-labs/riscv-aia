@@ -45,7 +45,6 @@ axi_lite_write_master#(
     .clk_i              ( i_clk             ),
     .rst_ni             ( ni_rst            ),
     .ready_i            ( ready_i           ),
-    .id_i               ( '0                ),
     .busy_o             (                   ),
     .addr_i             ( addr_i            ),
     .data_i             ( data_i            ),

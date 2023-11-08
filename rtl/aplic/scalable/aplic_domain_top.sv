@@ -15,7 +15,6 @@ module aplic_domain_top #(
    parameter                               APLIC         = "LEAF",
    parameter                               MODE          = "DIRECT",
    parameter unsigned                      IMSIC_ADDR_TARGET= 64'h24000000,
-   parameter unsigned                      ID            = 4'b0001,
    parameter type                          reg_req_t     = logic,
    parameter type                          reg_rsp_t     = logic,
    // DO NOT EDIT BY PARAMETER
@@ -93,7 +92,6 @@ module aplic_domain_top #(
       .APLIC(APLIC),
       .MODE(MODE),
       .IMSIC_ADDR_TARGET(IMSIC_ADDR_TARGET),
-      .ID(ID)
    ) i_aplic_domain_notifier (
       .i_clk(i_clk),
       .ni_rst(ni_rst),
