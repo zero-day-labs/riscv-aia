@@ -15,7 +15,7 @@ module axi_lite_write_master #(
     input logic                      clk_i  ,
     input logic                      rst_ni ,
     input logic                      ready_i,
-    input logic [3:0]                id_i,
+    //input logic [3:0]                id_i,
     output logic                     busy_o ,
     input logic [AXI_ADDR_WIDTH-1:0] addr_i ,
     input logic [AXI_DATA_WIDTH-1:0] data_i ,

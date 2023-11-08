@@ -21,9 +21,9 @@ VERILOG_SOURCES += $(AXI_FOLDER)reg_intf_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)ariane_axi_pkg.sv
 
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_defines.svh
-VERILOG_SOURCES += $(SRC_FOLDER)/axi4_lite_write_master.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_domain_notifier.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/common/aplic_defines.svh
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/common/axi4_lite_write_master.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_domain_notifier.sv
 VERILOG_SOURCES += $(WRAPPER_SRC)
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file

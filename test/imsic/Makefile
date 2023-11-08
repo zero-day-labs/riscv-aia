@@ -19,9 +19,9 @@ VERILOG_SOURCES += $(AXI_FOLDER)axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)ariane_axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_lite_slave.sv
 
-VERILOG_SOURCES += $(SRC_FOLDER)/imsic_top.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/imsic_regmap.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/axi4_lite_write_master.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/imsic/imsic_top.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/imsic/imsic_regmap.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/common/axi4_lite_write_master.sv
 VERILOG_SOURCES += $(TEST_FOLDER)./wrap.sv
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
