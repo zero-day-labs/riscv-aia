@@ -9,7 +9,7 @@ CLEAN =
 
 # defaults
 SIM ?= verilator
-EXTRA_ARGS += --trace --trace-structs
+EXTRA_ARGS += --trace --trace-structs -Wno-LATCH
 TOPLEVEL_LANG ?= verilog
 
 AXI_FOLDER = $(PWD)/../../vendor/
@@ -21,16 +21,16 @@ VERILOG_SOURCES += $(AXI_FOLDER)axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)ariane_axi_pkg.sv
 VERILOG_SOURCES += $(AXI_FOLDER)axi_lite_slave.sv
 
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_defines.svh
-VERILOG_SOURCES += $(SRC_FOLDER)/axi4_lite_write_master.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_regmap.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_domain_notifier.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_domain_regctl.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_domain_gateway.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_domain_top.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/aplic_top.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/imsic_regmap.sv
-VERILOG_SOURCES += $(SRC_FOLDER)/imsic_top.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/common/aplic_defines.svh
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/common/axi4_lite_write_master.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_regmap.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_domain_notifier.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_domain_regctl.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_domain_gateway.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_domain_top.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/aplic/scalable/aplic_top.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/imsic/imsic_regmap.sv
+VERILOG_SOURCES += $(SRC_FOLDER)/imsic/imsic_top.sv
 VERILOG_SOURCES += $(TEST_FOLDER)./wrap.sv
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file

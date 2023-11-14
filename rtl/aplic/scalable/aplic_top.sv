@@ -93,18 +93,20 @@ logic                           axi_1_busy;
 
 always_comb begin : basic_interconnect
    if (~axi_1_busy) begin
-      o_req_msi.aw        = axi_req_s_domain.aw ;
-      o_req_msi.aw_valid  = axi_req_s_domain.aw_valid;
-      o_req_msi.w         = axi_req_s_domain.w  ;
-      o_req_msi.w_valid   = axi_req_s_domain.w_valid ;
-      o_req_msi.b_ready   = axi_req_s_domain.b_ready ;
+      o_req_msi.aw               = axi_req_s_domain.aw ;
+      o_req_msi.aw_valid         = axi_req_s_domain.aw_valid;
+      o_req_msi.w                = axi_req_s_domain.w  ;
+      o_req_msi.w_valid          = axi_req_s_domain.w_valid ;
+      o_req_msi.b_ready          = axi_req_s_domain.b_ready ;
       axi_resp_s_domain.w_ready  = i_resp_msi.w_ready;
+      axi_resp_m_domain.w_ready  = 'h0;
    end else begin
-      o_reqo_req_msi.aw        = axi_req_m_domain.aw ;
-      o_reqo_req_msi.aw_valid  = axi_req_m_domain.aw_valid;
-      o_reqo_req_msi.w         = axi_req_m_domain.w  ;
-      o_reqo_req_msi.w_valid   = axi_req_m_domain.w_valid ;
-      o_reqo_req_msi.b_ready   = axi_req_m_domain.b_ready ;
+      axi_resp_s_domain.w_ready  = 'h0;
+      o_req_msi.aw               = axi_req_m_domain.aw ;
+      o_req_msi.aw_valid         = axi_req_m_domain.aw_valid;
+      o_req_msi.w                = axi_req_m_domain.w  ;
+      o_req_msi.w_valid          = axi_req_m_domain.w_valid ;
+      o_req_msi.b_ready          = axi_req_m_domain.b_ready ;
       axi_resp_m_domain.w_ready  = i_resp_msi.w_ready;
    end
 end
@@ -119,7 +121,6 @@ aplic_domain_top #(
    .APLIC("NON-LEAF"),
    .MODE(MODE),
    .IMSIC_ADDR_TARGET(64'h24000000),
-   .ID(4'b0001),
    .reg_req_t(reg_req_t),
    .reg_rsp_t(reg_rsp_t)
 ) i_aplic_m_domain_top(
@@ -146,7 +147,6 @@ aplic_domain_top #(
    .APLIC("LEAF"),
    .MODE(MODE),
    .IMSIC_ADDR_TARGET(64'h28000000),
-   .ID(4'b0010),
    .reg_req_t(reg_req_t),
    .reg_rsp_t(reg_rsp_t)
 ) i_aplic_s_domain_top(

@@ -29,13 +29,13 @@ module aplic_domain_top #(
    input  logic                                 ni_rst           ,
    input  reg_req_t                             i_req_cfg        ,
    output reg_rsp_t                             o_resp_cfg       ,
-   input  logic [NR_SRC-1:0]                    i_irq_sources    ,
+   input  logic [NR_SRC-1:0]                    i_irq_sources    
    /**  interface for direct mode */
    `ifdef DIRECT_MODE
    /** Interrupt Notification to Harts. One per priv. level per hart. */
-   output logic [NR_DOMAINS-1:0][NR_IDCs-1:0]   o_Xeip_targets
+   ,output logic [NR_DOMAINS-1:0][NR_IDCs-1:0]   o_Xeip_targets
    `elsif MSI_MODE
-   output  ariane_axi::req_t                    o_req_msi         ,
+   ,output ariane_axi::req_t                    o_req_msi         ,
    input   ariane_axi::resp_t                   i_resp_msi
    `endif
 );

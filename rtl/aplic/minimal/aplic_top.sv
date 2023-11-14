@@ -27,13 +27,13 @@ module aplic_top #(
    input  logic [NR_SRC-1:0]                    i_irq_sources        ,
    /** APLIC domain interface */
    input  reg_req_t                             i_req_cfg            ,
-   output reg_rsp_t                             o_resp_cfg           ,
+   output reg_rsp_t                             o_resp_cfg           
    /**  interface for direct mode */
    `ifdef DIRECT_MODE
    /** Interrupt Notification to Targets. One per priv. level. */
-   output logic [(NR_DOMAINS*NR_IDCs)-1:0]      o_Xeip_targets
+   ,output logic [(NR_DOMAINS*NR_IDCs)-1:0]      o_Xeip_targets
    `elsif MSI_MODE
-   output  ariane_axi::req_t                    o_req_msi            ,
+   ,output ariane_axi::req_t                    o_req_msi            ,
    input   ariane_axi::resp_t                   i_resp_msi
    `endif
 ); /** End of APLIC top interface */

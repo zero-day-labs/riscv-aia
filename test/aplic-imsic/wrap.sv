@@ -41,9 +41,9 @@ module aplic_imsic_top_wrapper #(
     output  logic [31:0]                    reg_intf_resp_d32_rdata,
     output  logic                           reg_intf_resp_d32_error,
     output  logic                           reg_intf_resp_d32_ready,
-    input   logic [NR_SRC-1:0]              i_irq_sources,
+    input   logic [NR_SRC-1:0]              i_irq_sources
 `ifdef MSI_MODE
-    output  logic [NR_INTP_FILES-1:0]       o_Xeip_targets
+    ,output  logic [NR_INTP_FILES-1:0]       o_Xeip_targets
 `endif
 );
 
@@ -83,8 +83,8 @@ assign reg_intf_resp_d32_ready              = o_resp.ready;
         .i_req_cfg          ( i_req                         ),
         .o_resp_cfg         ( o_resp                        ),
         .i_irq_sources      ( i_irq_sources                 ),
-        .o_req              ( master_req                    ),
-        .i_resp             ( master_resp                   )
+        .o_req_msi          ( master_req                    ),
+        .i_resp_msi         ( master_resp                   )
     );
 
     imsic_top #(

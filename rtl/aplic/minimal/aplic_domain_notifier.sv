@@ -44,10 +44,10 @@ module aplic_domain_notifier #(
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_setip_q       ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_setie_q       ,
     input   logic [NR_SRC-1:1][31:0]                                i_target_q      ,
-    input   logic [NR_SRC-1:1]                                      i_intp_domain   ,
+    input   logic [NR_SRC-1:1]                                      i_intp_domain   
     `ifdef DIRECT_MODE
     /** interface for direct mode */
-    input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_idelivery     ,
+    ,input  logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_idelivery     ,
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][0:0]                i_iforce        ,
     input   logic [NR_DOMAINS-1:0][NR_IDCs-1:0][IPRIOLEN-1:0]       i_ithreshold    ,
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0][25:0]               o_topi_sugg     ,
@@ -55,7 +55,7 @@ module aplic_domain_notifier #(
     output  logic [NR_DOMAINS-1:0][NR_IDCs-1:0]                     o_Xeip_targets  
     `elsif MSI_MODE
     /** interface for MSI mode */
-    input   logic [NR_DOMAINS-1:0][31:0]                            i_genmsi         ,
+    ,input  logic [NR_DOMAINS-1:0][31:0]                            i_genmsi         ,
     output  logic [NR_DOMAINS-1:0]                                  o_genmsi_sent    ,
     output  logic                                                   o_forwarded_valid,
     output  logic [10:0]                                            o_intp_forwd_id  ,
@@ -128,7 +128,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     // signals from AXI 4 Lite
     logic [AXI_ADDR_WIDTH-1:0] addr_d, addr_q;
     logic [AXI_DATA_WIDTH-1:0] data_d, data_q;
-    logic [3:0]                id_i;
 
     logic                      axi_busy, axi_busy_q;
     logic [10:0]               intp_forwd_id_d, intp_forwd_id_q;
@@ -143,7 +142,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         genmsi_sent         = '0;
         data_d              = data_q;
         addr_d              = addr_q;
-        id_i                = '0;
 
         for (int i = 1 ; i < NR_SRC ; i++) begin
             /** If the interrupt is pending and enabled in its domain*/
@@ -152,7 +150,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
                 data_d          = {{64-11{1'b0}}, i_target_q[i][10:0]};
                 addr_d          = (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET :
                                   IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
-                id_i            = {3'b0, i_intp_domain[i]};
                 ready_i         = 1'b1;
                 forwarded_valid = 1'b1;
             end
@@ -165,7 +162,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
                 data_d          = {32'b0, {21{1'b0}}, i_genmsi[i][10:0]};
                 addr_d          = (!i[0]) ? IMSIC_M_ADDR_TARGET :
                                   IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
-                id_i            = {3'b0, i[0]};
                 genmsi_sent[i]  = 1'b1;
                 ready_i         = 1'b1;
             end
@@ -186,7 +182,6 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         .clk_i          ( i_clk             ),
         .rst_ni         ( ni_rst            ),
         .ready_i        ( ready_i           ),
-        .id_i           ( id_i              ),
         .addr_i         ( addr_d            ),
         .data_i         ( data_d            ),
         .busy_o         ( axi_busy          ),
