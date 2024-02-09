@@ -89,14 +89,12 @@ module imsic_regmap #(
         if (en && !we) begin
             unique case (register_address) inside
                 32'h24000000: begin
-                    rdata                   = {{AXI_DATA_WIDTH-NR_SRC_LEN{1'b0}}, 
-                                                i_setipnum[0]};
+                    rdata                   = '0;
                     o_setipnum_re[0]        = 1'b1;
                 end
 
                 [32'h28000000 : 32'h28000000 + ((NR_INTP_FILES-2)*'h1000)]: begin
-                    rdata                   = {{AXI_DATA_WIDTH-NR_SRC_LEN{1'b0}}, 
-                                                i_setipnum[register_address[13:12]+1]};;
+                    rdata                   = '0;
                     o_setipnum_re[register_address[13:12]+1]        = 1'b1;
                 end           
                 default:;
