@@ -19,6 +19,7 @@ module aplic_top #(
    parameter int                                MIN_PRIO   = 6       ,
    parameter int                                NR_DOMAINS = 2       ,
    parameter int                                NR_IDCs    = 1       ,
+   parameter unsigned                           NR_VS_FILES_PER_IMSIC= 64'h1,
    parameter type                               reg_req_t  = logic   ,
    parameter type                               reg_rsp_t  = logic
 ) (
@@ -60,6 +61,7 @@ aplic_domain_top #(
    .NR_DOMAINS       ( NR_DOMAINS         ),
    .NR_SRC           ( NR_SRC             ),
    .NR_IDCs          ( NR_IDCs            ),
+   .NR_VS_FILES_PER_IMSIC (NR_VS_FILES_PER_IMSIC),
    .MIN_PRIO         ( MIN_PRIO           ),
    .reg_req_t        ( reg_req_t          ),
    .reg_rsp_t        ( reg_rsp_t          )

@@ -31,6 +31,7 @@ module aplic_domain_notifier #(
     // MSI mode parameters
     parameter int unsigned                                          AXI_ADDR_WIDTH  = 64,
     parameter int unsigned                                          AXI_DATA_WIDTH  = 64,
+    parameter unsigned                                              NR_VS_FILES_PER_IMSIC= 64'h1,
     parameter unsigned                                              IMSIC_M_ADDR_TARGET= 64'h24000000,
     parameter unsigned                                              IMSIC_S_ADDR_TARGET= 64'h28000000,
     // DO NOT EDIT BY PARAMETER
@@ -134,6 +135,8 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
     logic                      ready_i;
     logic                      forwarded_valid;
     logic [NR_DOMAINS-1:0]     genmsi_sent;
+    logic [AXI_ADDR_WIDTH-1:0] base_addr_target;
+    logic [AXI_ADDR_WIDTH-1:0] hart_addr_offset;
 
     always_comb begin : find_pen_en_intp
         ready_i             = '0;
@@ -142,14 +145,19 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         genmsi_sent         = '0;
         data_d              = data_q;
         addr_d              = addr_q;
+        base_addr_target    = '0;
+        hart_addr_offset    = '0;
 
         for (int i = 1 ; i < NR_SRC ; i++) begin
             /** If the interrupt is pending and enabled in its domain*/
             if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32] && i_domaincfgIE[i_intp_domain[i]] && !axi_busy_q) begin
                 intp_forwd_id_d = i[10:0];
-                data_d          = {{64-11{1'b0}}, i_target_q[i][10:0]};
-                addr_d          = (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET :
-                                  IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
+                data_d          = {{AXI_DATA_WIDTH-11{1'b0}}, i_target_q[i][10:0]};
+                base_addr_target= (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET : 
+                                   IMSIC_S_ADDR_TARGET  + ({{AXI_ADDR_WIDTH-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK);
+                hart_addr_offset= (!i_intp_domain[i]) ? {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 : 
+                                   {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 * (NR_VS_FILES_PER_IMSIC + 'h1);
+                addr_d          = base_addr_target + hart_addr_offset; 
                 ready_i         = 1'b1;
                 forwarded_valid = 1'b1;
             end
@@ -160,8 +168,10 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
             if (i_genmsi[i][12] && !axi_busy_q) begin
                 intp_forwd_id_d = '0;
                 data_d          = {32'b0, {21{1'b0}}, i_genmsi[i][10:0]};
-                addr_d          = (!i[0]) ? IMSIC_M_ADDR_TARGET :
-                                  IMSIC_S_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK) ;
+                base_addr_target= (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET : IMSIC_S_ADDR_TARGET  + ({{AXI_ADDR_WIDTH-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK);
+                hart_addr_offset= (!i_intp_domain[i]) ? {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 : 
+                                   {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 * (NR_VS_FILES_PER_IMSIC + 'h1);
+                addr_d          = base_addr_target + hart_addr_offset; 
                 genmsi_sent[i]  = 1'b1;
                 ready_i         = 1'b1;
             end

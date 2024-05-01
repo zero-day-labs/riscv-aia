@@ -18,6 +18,7 @@ module aplic_domain_top #(
    parameter int                                NR_SRC        = 32,         // Interrupt 0 is always 0
    parameter int                                MIN_PRIO      = 6,
    parameter int                                NR_IDCs       = 1,
+   parameter unsigned                           NR_VS_FILES_PER_IMSIC= 64'h1,
    parameter type                               reg_req_t     = logic,
    parameter type                               reg_rsp_t     = logic,
    // DO NOT EDIT BY PARAMETER
@@ -92,7 +93,8 @@ module aplic_domain_top #(
    aplic_domain_notifier #(    
       .NR_SRC                 ( NR_SRC                ),      
       .MIN_PRIO               ( MIN_PRIO              ),  
-      .NR_IDCs                ( NR_IDCs               )
+      .NR_IDCs                ( NR_IDCs               ),
+      .NR_VS_FILES_PER_IMSIC  ( NR_VS_FILES_PER_IMSIC )
    ) i_aplic_domain_notifier_minimal (
       .i_clk                  ( i_clk                 ),
       .ni_rst                 ( ni_rst                ),
