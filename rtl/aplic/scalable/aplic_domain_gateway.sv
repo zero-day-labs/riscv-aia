@@ -10,6 +10,7 @@
 *              new valid setip array value.
 *              Also in this module happens the inverted interrupts rectification
 */
+
 module aplic_domain_gateway #(
     parameter int                                     NR_SRC = 32,
     // DO NOT EDIT BY PARAMETER
@@ -25,7 +26,8 @@ module aplic_domain_gateway #(
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]         i_active,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]         i_claimed,
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]         o_intp_pen,
-    output  logic [NR_REG:0][NR_BITS_SRC-1:0]         o_rectified_src
+    output  logic [NR_REG:0][NR_BITS_SRC-1:0]         o_rectified_src,
+    output  logic [NR_SRC-1:0][2:0]                   o_intp_pen_src
 );
 
 localparam INACTIVE             = 3'h0;
@@ -84,13 +86,22 @@ always_comb begin
     end
 end
 
+assign o_intp_pen_src = intp_pen_src;
+
 /** Rectify the input*/
-for (genvar i = 1; i < NR_SRC; i++) begin
-    assign rectified_src_i[i] = i_sources[i] ^ i_sourcecfg[i][0];
+always_comb begin
+    for (int i = 1; i < NR_SRC; i++) begin
+        if ((i_sourcecfg[i][2:0] == INACTIVE) || (i_sourcecfg[i][2:0] == DETACHED)) begin
+            rectified_src[i] = 0;
+        end else begin
+            rectified_src[i] = i_sources[i] ^ i_sourcecfg[i][0];
+        end
+    end
 end
+
 /** Converts the rectified 1D array into a 2D array format */
 for (genvar i = 0; i <= NR_REG; i++) begin
-    assign o_rectified_src[i] = rectified_src_i[NR_BITS_SRC*i +: NR_BITS_SRC];
+    assign o_rectified_src[i] = rectified_src_q[NR_BITS_SRC*i +: NR_BITS_SRC];
 end
 
 /** Select the new interrupt */

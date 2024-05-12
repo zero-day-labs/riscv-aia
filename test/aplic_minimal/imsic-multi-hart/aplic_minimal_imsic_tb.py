@@ -1,8 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright © 2023 Francisco Marques & Zero-Day Labs, Lda. All rights reserved.
-#
-# Author: F.Marques <fmarques_00@protonmail.com>
-
 from os import setpgid
 from readline import set_pre_input_hook
 import cocotb
@@ -71,20 +66,25 @@ EIE0                    = 0xC0
 M_MODE                  = 3 
 S_MODE                  = 1
 
+ENABLE_INTP_FILE        = 1
+DISABLE_INTP_FILE       = 0
+
 class CInputs:
-    reg_intf_req_a32_d32_addr  = 0
-    reg_intf_req_a32_d32_write = 0
-    reg_intf_req_a32_d32_wdata = 0
-    reg_intf_req_a32_d32_wstrb = 0
-    reg_intf_req_a32_d32_valid = 0
-    i_rectified_src            = 0
+    i_ready                    = 0
+    i_addr                     = 0
+    i_data                     = 0
+    i_select_imsic             = 0
     i_priv_lvl                 = 0
     i_vgein                    = 0
     i_imsic_addr               = 0
     i_imsic_data               = 0
     i_imsic_we                 = 0
     i_imsic_claim              = 0
-    i_select_imsic             = 0
+    reg_intf_req_a32_d32_addr  = 0
+    reg_intf_req_a32_d32_write = 0
+    reg_intf_req_a32_d32_wdata = 0
+    reg_intf_req_a32_d32_wstrb = 0
+    reg_intf_req_a32_d32_valid = 0
 
 class COutputs:
     reg_intf_resp_d32_rdata = 0
@@ -123,7 +123,7 @@ def axi_read_reg(dut, addr):
     outputs.reg_intf_resp_d32_rdata = dut.reg_intf_resp_d32_rdata.value
     return outputs.reg_intf_resp_d32_rdata 
 
-def imsic_write_reg(dut, addr, data, priv_lvl, vgein = 0, imsic = 1):
+def imsic_write_reg(dut, imsic=1, addr=0, data=0, priv_lvl=M_MODE, vgein=0):
     input.i_select_imsic = (1 << (imsic-1))
     input.i_priv_lvl = priv_lvl
     input.i_vgein = vgein
@@ -141,13 +141,11 @@ def imsic_write_reg(dut, addr, data, priv_lvl, vgein = 0, imsic = 1):
     dut.i_imsic_we.value = input.i_imsic_we
 
 def imsic_stop_write(dut):
-    input.i_imsic_claim = 0
     input.i_imsic_we = 0
 
-    dut.i_imsic_claim.value = input.i_imsic_claim
     dut.i_imsic_we.value = input.i_imsic_we
 
-def imsic_write_xtopei(dut, priv_lvl, vgein = 0, imsic = 1):
+def imsic_write_xtopei(dut, imsic = 1, priv_lvl=M_MODE, vgein=0):
     input.i_select_imsic = (1 << (imsic-1))
     input.i_priv_lvl = priv_lvl
     input.i_vgein = vgein
@@ -164,67 +162,98 @@ def imsic_write_xtopei(dut, priv_lvl, vgein = 0, imsic = 1):
     dut.i_imsic_claim.value = input.i_imsic_claim
     dut.i_imsic_we.value = input.i_imsic_we
 
-async def test_aplic_imsic_m_s_files(dut):
+def imsic_read_reg(dut, imsic = 1, addr=0, priv_lvl=M_MODE, vgein=0):
+    input.i_select_imsic = (1 << (imsic-1))
+    input.i_priv_lvl = priv_lvl
+    input.i_vgein = vgein
+    input.i_imsic_addr = addr
+    input.i_imsic_data = 0
+    input.i_imsic_claim = 0
+    input.i_imsic_we = 0
 
-    TARGET_HART = [4, 1] # [1,2,3,4]
-    TARGET_GUEST = [0, 0] 
+    dut.i_select_imsic.value = input.i_select_imsic
+    dut.i_priv_lvl.value = input.i_priv_lvl
+    dut.i_vgein.value = input.i_vgein
+    dut.i_imsic_addr.value = input.i_imsic_addr
+    dut.i_imsic_data.value = input.i_imsic_data
+    dut.i_imsic_claim.value = input.i_imsic_claim
+    dut.i_imsic_we.value = input.i_imsic_we
+
+##############################################
+# Before running this test make sure that:
+# NR_IMSICS = 4
+# NR_VS_FILES_PER_IMSIC = 1
+##############################################
+async def n_imsic_aia_embedded_m_s_files(dut):
+    #######################################################################################################
+    # Configurable variables
+    #######################################################################################################
+    TARGET_INTP = [30, 10, 3] # <0...255>
+    TARGET_HART = [1, 3, 4] # <1...4>
+    TARGET_LEVEL = [M_MODE, S_MODE, S_MODE] # <M_MODE, S_MODE>
+    TARGET_GUEST = [0, 1, 0] # <0, 1> 
+    #######################################################################################################
+
+    for i in range(3):
+        if ((TARGET_GUEST[i] == 1) and (TARGET_LEVEL[i] != S_MODE)):
+            raise ValueError('Wrong value for TARGET_GUEST[{}]. It only make sense to set the guest to 1 if the TARFET_LEVEL is S_MODE'.format(i))
+
+    XLEN = 64
+    EIE_OFF = [(TARGET_INTP[0]//XLEN)*2, (TARGET_INTP[1]//XLEN)*2, (TARGET_INTP[2]//XLEN)*2]
+    TARGET_APLIC_MODE = [APLIC_M_BASE, APLIC_M_BASE, APLIC_M_BASE]
+    for i in range(3):
+        if (TARGET_LEVEL[i] == S_MODE):
+            TARGET_APLIC_MODE[i] = APLIC_S_BASE
 
 
-    # Enable interrupt delivering for S-File and M-File in hart TARGET_HART[0]
-    imsic_write_reg(dut, EDELIVERY, 1, S_MODE, TARGET_GUEST[0], TARGET_HART[0])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_write_reg(dut, EDELIVERY, 1, M_MODE, 0, TARGET_HART[0])
-    await Timer(ONE_CYCLE, units="ns")
-    # Enable interrupt delivering for S-File and M-File in hart TARGET_HART[1]
-    imsic_write_reg(dut, EDELIVERY, 1, S_MODE, TARGET_GUEST[1], TARGET_HART[1])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_write_reg(dut, EDELIVERY, 1, M_MODE, 0, TARGET_HART[1])
-    await Timer(ONE_CYCLE, units="ns")
+    # Enable interrupt delivering in IMSICs
+    for i in range(3):
+        imsic_write_reg(dut, TARGET_HART[i], EDELIVERY, ENABLE_INTP_FILE, TARGET_LEVEL[i], TARGET_GUEST[i])
+        await Timer(ONE_CYCLE, units="ns")
 
-    # Enable interrupt 14 in M-File
-    imsic_write_reg(dut, EIE0, 0x4000, M_MODE, 0, TARGET_HART[0])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_stop_write(dut)
-    await Timer(ONE_CYCLE, units="ns")
-    # Enable interrupt 23 in hart 2 imsic's S-File
-    imsic_write_reg(dut, EIE0, 0x800000, S_MODE, TARGET_GUEST[1], TARGET_HART[1])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_stop_write(dut)
-    await Timer(ONE_CYCLE, units="ns")
+    # Enable target interrupts in IMSICs interrupt files 
+    for i in range(3):
+        imsic_write_reg(dut, TARGET_HART[i], EIE0+EIE_OFF[i], 1<<(TARGET_INTP[i]%XLEN), TARGET_LEVEL[i], TARGET_GUEST[i])
+        await Timer(ONE_CYCLE, units="ns")
 
-    # Enable M domain in direct mode
+    # Enable M domain in MSI mode
     axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
     await Timer(4, units="ns")
-    # Enable S domain in direct mode
+    # Enable S domain in MSI mode
     axi_write_reg(dut, DOMAINCFG_S_BASE, (1 << 8) | (1 << 2))
     await Timer(4, units="ns")
 
-    # Make source 14 active in M domain, edge-sensitive rising edge
-    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 13), 4)
-    await Timer(4, units="ns")
-    # delegate intp 23 to S domain
-    axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * 22), DELEGATE_SRC)
-    await Timer(4, units="ns")
-    # Make source 23 active in S domain, edge-sensitive rising edge
-    axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * 22), 4)
-    await Timer(4, units="ns")
+    # configure the sourcecfg registers in APLIC for the target interrupts
+    for i in range(3):
+        if (TARGET_APLIC_MODE[i] == APLIC_S_BASE):
+            axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * (TARGET_INTP[i]-1)), DELEGATE_SRC)
+            await Timer(4, units="ns")
+            axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * (TARGET_INTP[i]-1)), 4)
+        else:
+            axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * (TARGET_INTP[i]-1)), 4)
+        await Timer(4, units="ns")
 
-    # Make TARGET 14 in M domain, EEID = 14
-    axi_write_reg(dut, TARGET_M_BASE+(TARGET_OFF * 13), (14 << 0) | ((TARGET_HART[0]-1) << 18))
-    await Timer(4, units="ns")
-    # Make TARGET 23 in S domain, EEID = 23, to hart 3 (hart index 1), and guest 1  
-    axi_write_reg(dut, TARGET_S_BASE+(TARGET_OFF * 22), (23 << 0) | ((TARGET_HART[1]-1) << 18) | (TARGET_GUEST[1] << 12))
-    await Timer(4, units="ns")
+    # configure the target registers in APLIC for the target interrupts
+    for i in range(3):
+        if(TARGET_LEVEL[i] == M_MODE):
+            axi_write_reg(dut, TARGET_M_BASE+(TARGET_OFF * (TARGET_INTP[i]-1)), ((TARGET_HART[i]-1) << 18) | (TARGET_INTP[i] << 0))
+        else:
+            axi_write_reg(dut, TARGET_S_BASE+(TARGET_OFF * (TARGET_INTP[i]-1)), ((TARGET_HART[i]-1) << 18) | (TARGET_GUEST[i] << 12) | (TARGET_INTP[i] << 0))
+        await Timer(4, units="ns")
 
-    # Write value 14 for setienum in M domain
-    axi_write_reg(dut, SETIENUM_M_BASE, 14)
-    await Timer(4, units="ns")
-    # Write value 23 for setienum in S domain
-    axi_write_reg(dut, SETIENUM_S_BASE, 23)
-    await Timer(4, units="ns")
+    # enable target interrupts in their respective domain
+    for i in range(3):
+        if(TARGET_LEVEL[i] == M_MODE):
+            axi_write_reg(dut, SETIENUM_M_BASE, TARGET_INTP[i])
+        else:
+            axi_write_reg(dut, SETIENUM_S_BASE, TARGET_INTP[i])
+        await Timer(4, units="ns")
 
-    # Write value 14 for setipnum in M domain
-    axi_write_reg(dut, SETIPNUM_M_BASE, 14)
+    # We now start triggering the interrupts
+    if(TARGET_LEVEL[0] == M_MODE):
+        axi_write_reg(dut, SETIPNUM_M_BASE, TARGET_INTP[0])
+    else:
+        axi_write_reg(dut, SETIPNUM_S_BASE, TARGET_INTP[0])
     await Timer(4, units="ns")
     # Write to domain (or other register really) to reset the write lines
     # This is a bug in the tests and not the hw
@@ -234,7 +263,7 @@ async def test_aplic_imsic_m_s_files(dut):
     
     # set interrupt 23 (to trigger the raising edge)
     source                = 0
-    source                = set_or_reg(source, 1, 1, 23)
+    source                = set_or_reg(source, 1, 1, TARGET_INTP[1])
     dut.i_sources.value   = source
     await Timer(4, units="ns")
     # reset source lines
@@ -242,38 +271,36 @@ async def test_aplic_imsic_m_s_files(dut):
     dut.i_sources.value   = source
     await Timer(10, units="ns")
 
-    # We need to put a FIFO in IMSIC so it can handle interrupts
-    # that happen before the handles the previous interrupt (same interrupt)
-    # For example, if we trigger intp 14 and send it to IMSIC, but before 
-    # IMSIC handles it, we trigger intp 14 again, IMSIC will only see one 
-    # interrupt 14 triggered.
+    # set interrupt 1 (to trigger the raising edge)
+    source                = set_or_reg(source, 1, 1, TARGET_INTP[2])
+    dut.i_sources.value   = source
+    await Timer(4, units="ns")
+    # reset source lines
+    source                = 0
+    dut.i_sources.value   = source
+    await Timer(10, units="ns")
 
-    # # write 14 to genmsi in M domain to trigger an MSI for intp 14
-    # axi_write_reg(dut, GENMSI_M_BASE, (14 << 0))
-    # await Timer(4, units="ns")
-    # # write 23 to genmsi in S domain to trigger an MSI for intp 23
-    # axi_write_reg(dut, GENMSI_S_BASE, (23 << 0))
-    # await Timer(4, units="ns")
-    # # Write to domain (or other register really) to reset the write lines
-    # # This is a bug in the tests and not the hw
-    # # We intend to fix this in the future :) 
-    # axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
-    # await Timer(4, units="ns")
-
-    # clear the pending interrupt 14
+    # clear the pending interrupt 
     await Timer(ONE_CYCLE*3, units="ns")
-    imsic_write_xtopei(dut, M_MODE, 0, TARGET_HART[0])
+    imsic_write_xtopei(dut, TARGET_HART[0], TARGET_LEVEL[0], TARGET_GUEST[0])
     await Timer(ONE_CYCLE, units="ns")
     imsic_stop_write(dut)
     await Timer(ONE_CYCLE, units="ns")
 
     # clear the pending interrupt 23
     await Timer(ONE_CYCLE*3, units="ns")
-    imsic_write_xtopei(dut, S_MODE, TARGET_GUEST[1], TARGET_HART[1])
+    imsic_write_xtopei(dut, TARGET_HART[1], TARGET_LEVEL[1], TARGET_GUEST[1])
     await Timer(ONE_CYCLE, units="ns")
     imsic_stop_write(dut)
     await Timer(ONE_CYCLE, units="ns")
-    
+
+    # clear the pending interrupt 1
+    await Timer(ONE_CYCLE*3, units="ns")
+    imsic_write_xtopei(dut, TARGET_HART[2], TARGET_LEVEL[2], TARGET_GUEST[2])
+    await Timer(ONE_CYCLE, units="ns")
+    imsic_stop_write(dut)
+    await Timer(ONE_CYCLE, units="ns")
+
 async def generate_clock(dut):
     """Generate clock pulses."""
 
@@ -301,6 +328,6 @@ async def regctl_unit_test(dut):
     dut.ni_rst.value = 1
     await Timer(1, units="ns")
 
-    await cocotb.start(test_aplic_imsic_m_s_files(dut))
+    await cocotb.start(n_imsic_aia_embedded_m_s_files(dut))
     
     await Timer(10000, units="ns")

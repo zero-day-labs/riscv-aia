@@ -35,6 +35,7 @@ module aplic_domain_regctl #(
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]           o_claimed_forwarded,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]           i_intp_pen,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]           i_rectified_src,
+    input   logic [NR_SRC-1:0][2:0]                     i_intp_pen_src,
     /** Notifier */
     output  logic                                       o_domaincfgIE,
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]           o_setip_q,
@@ -79,6 +80,8 @@ module aplic_domain_regctl #(
 
   localparam INTP_ACTIVE              = 1'b1;
   localparam INTP_NOT_ACTIVE          = 1'b0;
+
+  localparam LEVELXDM1_C              = 3'h4;
 // =========================================================
 
 // ============== INTERNAL SIGNALS DEFINITION ==============
@@ -437,7 +440,18 @@ module aplic_domain_regctl #(
 
 // ========================== PENDING =============================
   // Set interrupt pending registers modifiers
-  assign setipnum_di    = (setipnum_we) ? setipnum_o : setipnum_qi;
+
+  always_comb begin
+      setipnum_di          = setipnum_qi;
+      
+      if (setipnum_we) begin
+        if (((i_intp_pen_src[setipnum_o] == LEVELXDM1_C) && i_rectified_src[setipnum_o/32][setipnum_o%32]) || 
+              (i_intp_pen_src[setipnum_o] != LEVELXDM1_C)) begin
+          setipnum_di = setipnum_o;
+        end
+      end
+  end
+
   assign clripnum_di    = (clripnum_we) ? clripnum_o : clripnum_qi;
   for (genvar i = 0; i <= NR_REG; i++) begin
     assign in_clrip_di[i]       = (in_clrip_we[i])    ? in_clrip_o[i]    : in_clrip_qi[i];

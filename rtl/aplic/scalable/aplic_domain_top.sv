@@ -48,6 +48,7 @@ module aplic_domain_top #(
    logic [NR_REG:0][NR_BITS_SRC-1:0]           claimed_forwarded_i;
    logic [NR_REG:0][NR_BITS_SRC-1:0]           intp_pen_i;
    logic [NR_REG:0][NR_BITS_SRC-1:0]           rectified_src_i;
+   logic [NR_SRC-1:0][2:0]                     intp_pen_src;
    /** Notifier */
    logic                                       domaincfgIE_i;
    logic [NR_REG:0][NR_BITS_SRC-1:0]           setip_q_i;
@@ -80,7 +81,8 @@ module aplic_domain_top #(
       .i_active(active_i), 
       .i_claimed(claimed_forwarded_i), 
       .o_intp_pen(intp_pen_i), 
-      .o_rectified_src(rectified_src_i) 
+      .o_rectified_src(rectified_src_i),
+      .o_intp_pen_src(intp_pen_src) 
    ); // End of gateway instance
 // ================================================================
 
@@ -142,6 +144,7 @@ module aplic_domain_top #(
       .o_claimed_forwarded(claimed_forwarded_i),
       .i_intp_pen(intp_pen_i),
       .i_rectified_src(rectified_src_i),
+      .i_intp_pen_src(intp_pen_src)
       /** Notifier */
       .o_domaincfgIE(domaincfgIE_i),
       .o_setip_q(setip_q_i),

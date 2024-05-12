@@ -61,7 +61,8 @@ module aplic_domain_top #(
    logic [10:0]                                            intp_forwd_id       ;
    `endif
    /** Gateway signals */
-   logic [NR_REG:0][NR_BITS_SRC-1:0]                       rectified_src       ;
+   logic [NR_SRC-1:0][2:0]                                 intp_pen_src        ;
+   logic [NR_SRC-1:0]                                      rectified_src       ;
    logic [NR_DOMAINS-1:0]                                  domaincfgDM         ;
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       active              ;
    logic [NR_REG:0][NR_BITS_SRC-1:0]                       setip               ;
@@ -85,7 +86,8 @@ module aplic_domain_top #(
       .i_sugg_setip           ( sugg_setip            ),                                
       .i_claimed              ( claimed               ),                        
       .o_setip                ( setip                 ),                    
-      .o_rectified_src        ( rectified_src         )                                    
+      .o_rectified_src        ( rectified_src         ),                                    
+      .o_intp_pen_src         ( intp_pen_src          )                                    
    ); // End of gateway instance
 // ================================================================
 
@@ -144,6 +146,7 @@ module aplic_domain_top #(
       .o_claimed_or_forwarded ( claimed               ),
       .i_intp_pen             ( setip                 ),
       .i_rectified_src        ( rectified_src         ),
+      .i_intp_pen_src         ( intp_pen_src          ),
       /** Notifier */
       .o_domaincfgIE          ( domaincfgIE           ),
       .o_setip                ( setip_to_notifier     ),

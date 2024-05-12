@@ -43,7 +43,8 @@ module aplic_domain_regctl #(
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]                       o_active            ,
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]                       o_claimed_or_forwarded ,
     input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_intp_pen          ,
-    input   logic [NR_REG:0][NR_BITS_SRC-1:0]                       i_rectified_src     ,
+    input   logic [NR_SRC-1:0]                                      i_rectified_src     ,
+    input   logic [NR_SRC-1:0][2:0]                                 i_intp_pen_src      ,
     /** Notifier */
     output  logic [NR_DOMAINS-1:0]                                  o_domaincfgIE       , 
     output  logic [NR_REG:0][NR_BITS_SRC-1:0]                       o_setip             ,
@@ -75,7 +76,10 @@ module aplic_domain_regctl #(
   localparam INACTIVE                 = 3'b000;
   localparam INTP_ACTIVE              = 1'b1;
   localparam INTP_NOT_ACTIVE          = 1'b0;
-    /** setie/setip control unit macros */
+
+  localparam LEVELXDM1_C              = 3'h4;
+  
+  /** setie/setip control unit macros */
   localparam DEFAULT                  = 0;
   localparam CLRIX                    = 3'h1;
   localparam SETIXNUM                 = 3'h2;
@@ -317,27 +321,6 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
     .o_genmsi_we            (),
     .o_genmsi_re            (),
 `else
-    // Register: idelivery
-    .i_idelivery            (),
-    .o_idelivery            (),
-    .o_idelivery_we         (),
-    .o_idelivery_re         (),
-    // Register: iforce
-    .i_iforce               (),
-    .o_iforce               (),
-    .o_iforce_we            (),
-    .o_iforce_re            (),
-    // Register: ithreshold
-    .i_ithreshold           (),
-    .o_ithreshold           (),
-    .o_ithreshold_we        (),
-    .o_ithreshold_re        (),
-    // Register: topi
-    .i_topi                 (),
-    .o_topi_re              (),
-    // Register: claimi
-    .i_claimi               (),
-    .o_claimi_re            (),
     // Register: genmsi
     .i_genmsi               ( genmsi_q          ),
     .o_genmsi               ( genmsi_o          ),
@@ -427,8 +410,15 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
             /** If the intp written in setipnum_o is delegated to this domain AND
                 an update was requested, update setipnum_d */
             if ((intp_domain_q[setipnum_o[i]] == i[0]) && setipnum_we[i]) begin
-                setipnum_d          = setipnum_o[i];
-                setipnum_final_we   = setipnum_we[i];
+                if (i_intp_pen_src[setipnum_o[i]] == LEVELXDM1_C) begin
+                    if (i_rectified_src[setipnum_o[i]]) begin
+                        setipnum_d          = setipnum_o[i];
+                        setipnum_final_we   = setipnum_we[i];
+                    end
+                end else begin
+                    setipnum_d          = setipnum_o[i];
+                    setipnum_final_we   = setipnum_we[i];
+                end
             end
         end
     end
@@ -456,7 +446,7 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
         in_clrip_full = '0;
         for (int i = 0; i < NR_DOMAINS; i++) begin
             for (int j = 0; j < NR_SRC; j++) begin
-                in_clrip_full[intp_domain_q[j]][j/32][j%32] = i_rectified_src[j/32][j%32];
+                in_clrip_full[intp_domain_q[j]][j/32][j%32] = i_rectified_src[j];
             end
         end
     end
