@@ -653,11 +653,11 @@ logic [NR_DOMAINS-1:0][NR_IDCs:0][1:0]              iforce_ctl;
                 idelivery_d[i][j]       = (idelivery_we[i][j]) ? idelivery_o[i][j] : idelivery_q[i][j];
                 ithreshold_d[i][j]      = (ithreshold_we[i][j]) ? ithreshold_o[i][j] : ithreshold_q[i][j];
                 topi_d[i][j]            = ((i_topi_update[i][j]) || 
-                                          ((i_topi[i][j] == 0) && claimi_re[i][j])) ? i_topi[i] : topi_q[i][j];
+                                          ((i_topi[i][j] == 0) && claimi_re[i][j])) ? i_topi[i][j] : topi_q[i][j];
                 case (iforce_ctl[i][j])
-                    ZERO_FORCE: iforce_d[i]  = '0;
-                    W_FORCE:    iforce_d[i]  = iforce_o[i][j]; 
-                    default:    iforce_d[i]  = iforce_q[i][j];
+                    ZERO_FORCE: iforce_d[i][j]  = '0;
+                    W_FORCE:    iforce_d[i][j]  = iforce_o[i][j]; 
+                    default:    iforce_d[i][j]  = iforce_q[i][j];
                 endcase
             end
         end

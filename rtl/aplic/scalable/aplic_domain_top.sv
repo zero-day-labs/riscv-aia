@@ -12,11 +12,14 @@ module aplic_domain_top #(
    parameter int                           NR_SRC        = 32,          // Interrupt 0 is always 0
    parameter int                           MIN_PRIO      = 6,
    parameter int                           NR_IDCs       = 1,
+   parameter                               APLIC_LEVEL   = "M",
    parameter                               APLIC         = "LEAF",
-   parameter                               MODE          = "DIRECT",
    parameter unsigned                      IMSIC_ADDR_TARGET= 64'h24000000,
+   parameter unsigned                      NR_VS_FILES_PER_IMSIC= 64'h1,
    parameter type                          reg_req_t     = logic,
    parameter type                          reg_rsp_t     = logic,
+   parameter type                          axi_req_t     = logic,
+   parameter type                          axi_rsp_t     = logic,
    // DO NOT EDIT BY PARAMETER
    parameter int                           IPRIOLEN      = 3, //(MIN_PRIO == 1) ? 1 : $clog2(MIN_PRIO)
    parameter int                           NR_BITS_SRC   = 32,//(NR_SRC > 32)? 32 : NR_SRC,
@@ -35,8 +38,8 @@ module aplic_domain_top #(
    /** interface for MSI mode */
    `elsif MSI_MODE
    output  logic                        o_busy,
-   output  ariane_axi::req_t            o_req,
-   input   ariane_axi::resp_t           i_resp
+   output  axi_req_t                    o_req,
+   input   axi_rsp_t                    i_resp
    `endif
 );
 // ================== INTERCONNECTION SIGNALS =====================
@@ -59,13 +62,14 @@ module aplic_domain_top #(
    logic [10:0]                                intp_forwd_id;
    logic [31:0]                                genmsi;
    logic                                       genmsi_sent;
-   `endif
+   `elsif DIRECT_MODE
       /**  interface for direct mode */
-   logic [NR_IDCs-1:0][0:0]                     idelivery_i;
-   logic [NR_IDCs-1:0][0:0]                     iforce_i;
-   logic [NR_IDCs-1:0][IPRIOLEN-1:0]            ithreshold_i;
-   logic [NR_IDCs-1:0][25:0]                    topi_sugg_i;
-   logic                                       topi_update_i;
+   logic [NR_IDCs-1:0][0:0]                    idelivery_i;
+   logic [NR_IDCs-1:0][0:0]                    iforce_i;
+   logic [NR_IDCs-1:0][IPRIOLEN-1:0]           ithreshold_i;
+   logic [NR_IDCs-1:0][25:0]                   topi_sugg_i;
+   logic [NR_IDCs-1:0]                         topi_update_i;
+   `endif
 // ================================================================
 
 // ========================== GATEWAY =============================
@@ -92,8 +96,11 @@ module aplic_domain_top #(
       .NR_IDCs(NR_IDCs),
       .MIN_PRIO(MIN_PRIO),
       .APLIC(APLIC),
-      .MODE(MODE),
+      .APLIC_LEVEL(APLIC_LEVEL),
       .IMSIC_ADDR_TARGET(IMSIC_ADDR_TARGET),
+      .NR_VS_FILES_PER_IMSIC(NR_VS_FILES_PER_IMSIC),
+      .axi_req_t(axi_req_t),
+      .axi_rsp_t(axi_rsp_t)
    ) i_aplic_domain_notifier (
       .i_clk(i_clk),
       .ni_rst(ni_rst),
@@ -144,7 +151,7 @@ module aplic_domain_top #(
       .o_claimed_forwarded(claimed_forwarded_i),
       .i_intp_pen(intp_pen_i),
       .i_rectified_src(rectified_src_i),
-      .i_intp_pen_src(intp_pen_src)
+      .i_intp_pen_src(intp_pen_src),
       /** Notifier */
       .o_domaincfgIE(domaincfgIE_i),
       .o_setip_q(setip_q_i),
@@ -154,15 +161,14 @@ module aplic_domain_top #(
       .o_genmsi(genmsi),
       .i_genmsi_sent(genmsi_sent),
       .i_forwarded_valid(forwarded_valid),
-      .i_intp_forwd_id(intp_forwd_id),
-      `endif
-         /**  interface for direct mode */
+      .i_intp_forwd_id(intp_forwd_id)
+      `elsif DIRECT_MODE
       .o_idelivery(idelivery_i),
       .o_iforce(iforce_i),
       .o_ithreshold(ithreshold_i),
       .i_topi_sugg(topi_sugg_i),
       .i_topi_update(topi_update_i)
-         /**  interface for msi mode */
+      `endif
    );
 // ================================================================
 

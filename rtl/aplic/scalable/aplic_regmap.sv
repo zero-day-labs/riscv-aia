@@ -99,16 +99,19 @@ module aplic_regmap #(
   output logic [0:0][31:0]      o_setipnum_be,
   output logic [0:0]            o_setipnum_be_we,
   output logic [0:0]            o_setipnum_be_re,
+  `ifdef MSI_MODE
   // Register: genmsi
   input  logic [0:0][31:0]      i_genmsi,
   output logic [0:0][31:0]      o_genmsi,
   output logic [0:0]            o_genmsi_we,
   output logic [0:0]            o_genmsi_re,
+  `endif
   // Register: target
   input  logic [NR_SRC-1:1][31:0]    i_target,
   output logic [NR_SRC-1:1][31:0]    o_target,
   output logic [NR_SRC-1:1]          o_target_we,
   output logic [NR_SRC-1:1]          o_target_re,
+  `ifdef DIRECT_MODE
   // Register: idelivery
   input  logic [NR_IDCs-1:0][0:0]    i_idelivery,
   output logic [NR_IDCs-1:0][0:0]    o_idelivery,
@@ -130,6 +133,7 @@ module aplic_regmap #(
   // Register: claimi
   input  logic [NR_IDCs-1:0][25:0]    i_claimi,
   output logic [NR_IDCs-1:0]          o_claimi_re,
+  `endif
   // Bus Interface
   input  reg_req_t                    i_req,
   output reg_rsp_t                    o_resp
@@ -190,12 +194,15 @@ always_comb begin
   o_setipnum_be = '0;
   o_setipnum_be_we = '0;
   o_setipnum_be_re = '0;
+  `ifdef MSI_MODE
   o_genmsi = '0;
   o_genmsi_we = '0;
   o_genmsi_re = '0;
+  `endif
   o_target = '0;
   o_target_we = '0;
   o_target_re = '0;
+  `ifdef DIRECT_MODE
   o_idelivery = '0;
   o_idelivery_we = '0;
   o_idelivery_re = '0;
@@ -207,6 +214,7 @@ always_comb begin
   o_ithreshold = '0;
   o_ithreshold_we = '0;
   o_ithreshold_re = '0;
+  `endif
   if (i_req.valid) begin
     if (i_req.write) begin
       unique case(i_req.addr)
@@ -394,10 +402,12 @@ always_comb begin
           o_setipnum_be[0][31:0]     = i_req.wdata[31:0];
           o_setipnum_be_we[0]      = 1'b1;
         end
+        `ifdef MSI_MODE
         DOMAIN_ADDR + 32'h3000: begin
           o_genmsi[0][31:0]     = i_req.wdata[31:0];
           o_genmsi_we[0]      = 1'b1;
         end
+        `endif
         DOMAIN_ADDR + 32'h3004: begin
           o_target[1][31:0]     = i_req.wdata[31:0];
           o_target_we[1]      = 1'b1;
@@ -522,6 +532,7 @@ always_comb begin
           o_target[31][31:0]     = i_req.wdata[31:0];
           o_target_we[31]      = 1'b1;
         end
+        `ifdef DIRECT_MODE
         DOMAIN_ADDR + 32'h4000: begin
           o_idelivery[0][0:0]     = i_req.wdata[0:0];
           o_idelivery_we[0]      = 1'b1;
@@ -534,6 +545,20 @@ always_comb begin
           o_ithreshold[0][IPRIOLEN-1:0]     = i_req.wdata[IPRIOLEN-1:0];
           o_ithreshold_we[0]      = 1'b1;
         end
+
+        DOMAIN_ADDR + 32'h4000 + 32'h20: begin
+          o_idelivery[1][0:0]     = i_req.wdata[0:0];
+          o_idelivery_we[1]      = 1'b1;
+        end
+        DOMAIN_ADDR + 32'h4004 + 32'h20: begin
+          o_iforce[1][0:0]     = i_req.wdata[0:0];
+          o_iforce_we[1]      = 1'b1;
+        end
+        DOMAIN_ADDR + 32'h4008+ 32'h20: begin
+          o_ithreshold[1][IPRIOLEN-1:0]     = i_req.wdata[IPRIOLEN-1:0];
+          o_ithreshold_we[1]      = 1'b1;
+        end
+        `endif
         default: o_resp.error = 1'b1;
       endcase
     end else begin
@@ -722,10 +747,12 @@ always_comb begin
           o_resp.rdata[31:0]     = i_setipnum_be[0][31:0];
           o_setipnum_be_re[0]      = 1'b1;
         end
+        `ifdef MSI_MODE
         DOMAIN_ADDR + 32'h3000: begin
           o_resp.rdata[31:0]     = i_genmsi[0][31:0];
           o_genmsi_re[0]      = 1'b1;
         end
+        `endif
         DOMAIN_ADDR + 32'h3004: begin
           o_resp.rdata[31:0]     = i_target[1][31:0];
           o_target_re[1]      = 1'b1;
@@ -850,6 +877,7 @@ always_comb begin
           o_resp.rdata[31:0]     = i_target[31][31:0];
           o_target_re[31]      = 1'b1;
         end
+        `ifdef DIRECT_MODE
         DOMAIN_ADDR + 32'h4000: begin
           o_resp.rdata[0:0]     = i_idelivery[0][0:0];
           o_idelivery_re[0]      = 1'b1;
@@ -870,6 +898,28 @@ always_comb begin
           o_resp.rdata[25:0]     = i_claimi[0][25:0];
           o_claimi_re[0]      = 1'b1;
         end
+
+        DOMAIN_ADDR + 32'h4000 + 32'h20: begin
+          o_resp.rdata[0:0]     = i_idelivery[1][0:0];
+          o_idelivery_re[1]      = 1'b1;
+        end
+        DOMAIN_ADDR + 32'h4004 + 32'h20: begin
+          o_resp.rdata[0:0]     = i_iforce[1][0:0];
+          o_iforce_re[1]      = 1'b1;
+        end
+        DOMAIN_ADDR + 32'h4008 + 32'h20: begin
+          o_resp.rdata[IPRIOLEN-1:0]     = i_ithreshold[1][IPRIOLEN-1:0];
+          o_ithreshold_re[1]      = 1'b1;
+        end
+        DOMAIN_ADDR + 32'h4018 + 32'h20: begin
+          o_resp.rdata[25:0]     = i_topi[1][25:0];
+          o_topi_re[1]      = 1'b1;
+        end
+        DOMAIN_ADDR + 32'h401c + 32'h20: begin
+          o_resp.rdata[25:0]     = i_claimi[1][25:0];
+          o_claimi_re[1]      = 1'b1;
+        end
+        `endif
         default: o_resp.error = 1'b1;
       endcase
     end

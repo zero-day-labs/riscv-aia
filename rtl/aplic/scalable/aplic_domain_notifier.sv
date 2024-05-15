@@ -18,15 +18,18 @@
 *              software to change"
 */
 module aplic_domain_notifier #(
-    parameter int                                   NR_SRC          = 32,
-    parameter                                       MODE            = "DIRECT",
+    parameter int unsigned                          NR_SRC          = 32,
     parameter                                       APLIC           = "LEAF",
-    parameter int                                   NR_IDCs         = 1,
-    parameter int                                   NR_HARTs        = 1,
-    parameter int                                   MIN_PRIO        = 6,
+    parameter                                       APLIC_LEVEL     = "M",
+    parameter int unsigned                          NR_IDCs         = 1,
+    parameter int unsigned                          NR_HARTs        = 1,
+    parameter int unsigned                          MIN_PRIO        = 6,
     parameter int unsigned                          AXI_ADDR_WIDTH  = 64,
     parameter int unsigned                          AXI_DATA_WIDTH  = 64,
     parameter unsigned                              IMSIC_ADDR_TARGET= 64'h24000000,
+    parameter unsigned                              NR_VS_FILES_PER_IMSIC= 64'h1,
+    parameter type                                  axi_req_t       = logic,
+    parameter type                                  axi_rsp_t       = logic,
     // DO NOT EDIT BY PARAMETER
     parameter int                                   NR_BITS_SRC     = (NR_SRC > 32) ? 32 : NR_SRC,
     parameter int                                   NR_REG          = (NR_SRC-1)/32,
@@ -53,8 +56,8 @@ module aplic_domain_notifier #(
     output  logic                                   o_forwarded_valid,
     output  logic [10:0]                            o_intp_forwd_id  ,
     output  logic                                   o_busy           ,
-    output  ariane_axi::req_t                       o_req            ,
-    input   ariane_axi::resp_t                      i_resp
+    output  axi_req_t                               o_req            ,
+    input   axi_rsp_t                               i_resp
     `endif
 );
 
@@ -65,81 +68,107 @@ localparam NR_IDC_W         = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
 localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
 
 `ifdef DIRECT_MODE
-    
-    logic [NR_IDCs-1:0]         has_valid_intp_i;
-    logic [NR_IDC_W-1:0]        hart_index_i;
-    logic [IPRIOLEN-1:0]        prev_higher_i;
+    logic [NR_IDCs-1:0]                      has_valid_intp;
+    logic [NR_IDCs-1:0][9:0]                 intp_id;
+    logic [NR_IDCs-1:0][IPRIOLEN-1:0]        intp_prio;
+    logic [NR_IDCs-1:0][IPRIOLEN-1:0]        prev_higher_prio;
 
-    /** Detect highest pending-enabled interrut and discover hart index*/
     always_comb begin
-        prev_higher_i = 3'b111;
-        has_valid_intp_i = '0;
-        o_topi_sugg = '0;
-        for (int i = NR_SRC-1 ; i > 0 ; i--) begin
-            hart_index_i = i_target_q[i][TARGET_HART_IDX +: NR_IDC_W];
-            /** If the interrupt is pending and enabled*/
-            if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32]) begin
-                /** Is the interrupt able to contribute to IDC interrupt? */
-                /** "interrupt sources with priority numbers P and higher DO NOT
-                *   contribute to signaling interrupts to the hart" 
-                *   If threshold is 0 all insterrupt can contribute 
-                *   Finally, check if the current pend/en intp has a higher (smaller number)
-                *   priority than the previous pend/en intp. */
-                if(((i_target_q[i][2:0] < i_ithreshold[i_target_q[i][TARGET_HART_IDX +: NR_IDC_W]]) || 
-                    (i_ithreshold[i_target_q[i][TARGET_HART_IDX +: NR_IDC_W]] == 0)) &&
-                    (i_target_q[i][IPRIOLEN-1:0] < prev_higher_i[IPRIOLEN-1:0])) begin
-                    has_valid_intp_i[hart_index_i] = 1'b1;
-                    prev_higher_i                  = i_target_q[i][IPRIOLEN-1:0];
-                    o_topi_sugg[hart_index_i]      = {i[9:0], 8'b0, i_target_q[i][7:0]};
+        has_valid_intp      = '0;
+        intp_id             = '0;
+        intp_prio           = '0;
+        prev_higher_prio    = '1;
+        o_topi_sugg         = '0;
+        o_topi_update       = '0;
+
+        for (int i = 0; i < NR_IDCs; i++) begin
+            for (int w = 1; w < NR_SRC; w++) begin
+                if (i_setip_q[w/32][w%32] && i_setie_q[w/32][w%32] &&
+                    (i_target_q[w][TARGET_HART_IDX +: NR_IDC_W] == i[NR_IDC_W-1:0]) && 
+                    (i_target_q[w][IPRIOLEN-1:0] < prev_higher_prio[i])) begin
+                    intp_id[i]          = w[9:0];
+                    intp_prio[i]        = i_target_q[w][IPRIOLEN-1:0];
+                    prev_higher_prio[i] = intp_prio[i];
                 end
             end
-        end 
+        end
+
+        for (int i = 0; i < NR_IDCs; i++) begin
+            if((intp_id[i] != '0) && ((intp_prio[i] < i_ithreshold[i]) || 
+                (i_ithreshold[i] == 0))) begin
+                has_valid_intp[i] = 1'b1;
+                o_topi_sugg[i]    = {intp_id[i], 8'b0, {8-IPRIOLEN{1'b0}}, intp_prio[i]};
+                o_topi_update[i]  = 1'b1;
+            end
+        end
     end
 
-    /** Update outputs with IDC validation */
+    /** CPU line logic*/
     for (genvar i = 0; i < NR_IDCs; i++) begin
-        assign o_Xeip_targets[i] = i_domaincfgIE & i_idelivery[i] & 
-                                   (has_valid_intp_i[i] | i_iforce[i]);
-        assign o_topi_update[i]  = has_valid_intp_i[i];
+        assign o_Xeip_targets[i] =   i_domaincfgIE & i_idelivery[i] & 
+                                     (has_valid_intp[i] | i_iforce[i]);
     end
 
 `elsif MSI_MODE
     // signals from AXI 4 Lite
-    logic [AXI_ADDR_WIDTH-1:0] addr_i;
-    logic [AXI_DATA_WIDTH-1:0] data_i;
+    logic [AXI_ADDR_WIDTH-1:0] addr_d, addr_q;
+    logic [AXI_DATA_WIDTH-1:0] data_d, data_q;
+
+    logic                      axi_busy, axi_busy_q;
     logic [10:0]               intp_forwd_id_d, intp_forwd_id_q;
     logic                      ready_i;
+    logic                      forwarded_valid;
     logic                      genmsi_sent;
-    logic                      axi_busy, axi_busy_q;
+    logic [AXI_ADDR_WIDTH-1:0] base_addr_target;
+    logic [AXI_ADDR_WIDTH-1:0] hart_addr_offset;
 
-    always_comb begin : find_highest_pen_en
+    always_comb begin : find_pen_en_intp
         ready_i             = '0;
-        genmsi_sent         = '0;
         intp_forwd_id_d     = intp_forwd_id_q;
+        forwarded_valid     = '0;
+        genmsi_sent         = '0;
+        data_d              = data_q;
+        addr_d              = addr_q;
+        base_addr_target    = '0;
+        hart_addr_offset    = '0;
 
         for (int i = 1 ; i < NR_SRC ; i++) begin
-            /** If the interrupt is pending and enabled*/
+            /** If the interrupt is pending and enabled in its domain*/
             if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32] && i_domaincfgIE && !axi_busy_q) begin
                 intp_forwd_id_d = i[10:0];
-                data_i          = {{64-11{1'b0}}, i_target_q[i][10:0]};
-                addr_i          = IMSIC_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK);
+                data_d          = {{AXI_DATA_WIDTH-11{1'b0}}, i_target_q[i][10:0]};
+                if (APLIC_LEVEL == "M") begin
+                    base_addr_target= IMSIC_ADDR_TARGET;
+                    hart_addr_offset= {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000;    
+                end else if (APLIC_LEVEL == "S") begin
+                    base_addr_target= IMSIC_ADDR_TARGET  + ({{AXI_ADDR_WIDTH-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK);
+                    hart_addr_offset= {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 * (NR_VS_FILES_PER_IMSIC + 'h1);
+                end
+                addr_d          = base_addr_target + hart_addr_offset; 
                 ready_i         = 1'b1;
+                forwarded_valid = 1'b1;
             end
         end
 
         /** Lastly, check if genmsi wants to send a MSI*/
         if (i_genmsi[12] && !axi_busy_q) begin
             intp_forwd_id_d = '0;
-            data_i          = {32'b0, {21{1'b0}}, i_genmsi[10:0]};
-            addr_i          = IMSIC_ADDR_TARGET + ({{64-32{1'b0}}, i_target_q[i_genmsi[10:0]]} & TARGET_GUEST_IDX_MASK);
+            data_d          = {32'b0, {21{1'b0}}, i_genmsi[10:0]};
+            if (APLIC_LEVEL == "M") begin
+                base_addr_target= IMSIC_ADDR_TARGET;
+                hart_addr_offset= {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[data_d[31:0]][31:18]} * 'h1000;    
+            end else if (APLIC_LEVEL == "S") begin
+                base_addr_target= IMSIC_ADDR_TARGET  + ({{AXI_ADDR_WIDTH-32{1'b0}}, i_target_q[data_d[31:0]]} & TARGET_GUEST_IDX_MASK);
+                hart_addr_offset= {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[data_d[31:0]][31:18]} * 'h1000 * (NR_VS_FILES_PER_IMSIC + 'h1);
+            end
+            addr_d          = base_addr_target + hart_addr_offset; 
             genmsi_sent     = 1'b1;
             ready_i         = 1'b1;
         end
     end
 
     assign o_genmsi_sent        = genmsi_sent;
-    /** the intp is considered forwarded when the axi interface becomes available again */
-    assign o_forwarded_valid    = axi_busy_q & ~axi_busy;
+    assign o_forwarded_valid    = forwarded_valid;
     assign o_intp_forwd_id      = intp_forwd_id_q;
     assign o_busy               = axi_busy;
 
@@ -153,8 +182,8 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         .clk_i          ( i_clk             ),
         .rst_ni         ( ni_rst            ),
         .ready_i        ( ready_i           ),
-        .addr_i         ( addr_i            ),
-        .data_i         ( data_i            ),
+        .addr_i         ( addr_d            ),
+        .data_i         ( data_d            ),
         .busy_o         ( axi_busy          ),
         .req_o          ( o_req             ),
         .resp_i         ( i_resp            )
@@ -164,12 +193,15 @@ localparam NR_HART_W        = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
         if (!ni_rst) begin
             axi_busy_q      <= '0;
             intp_forwd_id_q <= '0;
+            data_q          <= '0;
+            addr_q          <= '0;
         end else begin
             axi_busy_q      <= axi_busy;
             intp_forwd_id_q <= intp_forwd_id_d;
+            data_q          <= data_d;
+            addr_q          <= addr_d;
         end
     end
-
 `endif
 
 endmodule

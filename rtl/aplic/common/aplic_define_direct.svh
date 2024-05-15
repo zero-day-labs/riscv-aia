@@ -5,5 +5,4 @@
 * Author: F.Marques <fmarques_00@protonmail.com>
 */ 
 
-`define MSI_MODE
-// `define DIRECT_MODE
+`define DIRECT_MODE

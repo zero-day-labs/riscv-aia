@@ -3,6 +3,15 @@ from readline import set_pre_input_hook
 import cocotb
 from cocotb.triggers import RisingEdge, FallingEdge, Timer
 import math
+from aia_define import APLIC_TYPE, IRQC_TYPE
+from cocotb.binary import BinaryValue
+
+APLIC_MINIMAL = 1
+APLIC_SCALABLE = 2
+
+IRQC_APLIC = 1
+IRQC_AIA = 2
+IRQC_IEAIA = 3
 
 ONE_CYCLE               = 2
 
@@ -211,12 +220,32 @@ def organize_xtopei(array, nr_imsics = 0, nr_intp_files = 0, length=5):
     final_result.reverse()
     return final_result
 
+def organize_topi(array, nr_idcs = 0, nr_domains = 0, length=25):
+    index = 0
+    organized_data = []
+    final_result = []
+
+    if (nr_idcs == 0 or nr_domains == 0):
+        raise("NR_IMSIC or NR_INTP_FILES lower than 1")
+    
+    for i in range(nr_idcs):
+        for j in range(nr_domains):
+            subrange = array[index:index + length]
+            index = index + length + 1
+            organized_data.append(subrange)
+        organized_data.reverse()
+        final_result.append(organized_data)
+        organized_data = []
+
+    final_result.reverse()
+    return final_result
+
 ##############################################
 # Before running this test make sure that:
 # NR_IMSICS = 4
 # NR_VS_FILES_PER_IMSIC = 1
 ##############################################
-async def n_imsic_aia_embedded_m_s_files(dut):
+async def aia_msi(dut):
     #######################################################################################################
     # Configurable variables
     #######################################################################################################
@@ -359,6 +388,129 @@ async def n_imsic_aia_embedded_m_s_files(dut):
         except AssertionError as e:
             print(f"{RED}AssertionError: {e}{RESET}")
 
+async def aia_direct(dut):
+    #######################################################################################################
+    # Configurable variables
+    #######################################################################################################
+    TARGET_INTP = [30, 10, 3] # <0...255>
+    TARGET_HART = [1, 2, 1] # <1...4>
+    TARGET_LEVEL = [M_MODE, S_MODE, S_MODE] # <M_MODE, S_MODE>
+    TARGET_PRIO = [0, 0, 0] # <0, 1> 
+    #######################################################################################################
+    NR_IDCs = 2
+    NR_DOMAINS = 2
+
+    # Enable M domain in MSI mode
+    axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+    # Enable S domain in MSI mode
+    axi_write_reg(dut, DOMAINCFG_S_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+
+    # Enable IDCs
+    for i in range(3):
+        if (TARGET_LEVEL[i] == M_MODE):        
+            axi_write_reg(dut, IDELIVERY_M_BASE + (0x20*(TARGET_HART[i]-1)), (1 << 0))
+        elif (TARGET_LEVEL[i] == S_MODE):
+            axi_write_reg(dut, IDELIVERY_S_BASE + (0x20*(TARGET_HART[i]-1)), (1 << 0))
+        await Timer(4, units="ns")    
+
+    # configure the sourcecfg registers in APLIC for the target interrupts
+    for i in range(3):
+        if (TARGET_LEVEL[i] == S_MODE):
+            axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * (TARGET_INTP[i]-1)), DELEGATE_SRC)
+            await Timer(4, units="ns")
+            axi_write_reg(dut, SOURCECFG_S_BASE+(SOURCECFG_OFF * (TARGET_INTP[i]-1)), 4)
+        else:
+            axi_write_reg(dut, SOURCECFG_M_BASE+(SOURCECFG_OFF * (TARGET_INTP[i]-1)), 4)
+        await Timer(4, units="ns")
+
+    # configure the target registers in APLIC for the target interrupts
+    for i in range(3):
+        if(TARGET_LEVEL[i] == M_MODE):
+            axi_write_reg(dut, TARGET_M_BASE+(TARGET_OFF * (TARGET_INTP[i]-1)), ((TARGET_HART[i]-1) << 18) | (TARGET_PRIO[i] << 0))
+        else:
+            axi_write_reg(dut, TARGET_S_BASE+(TARGET_OFF * (TARGET_INTP[i]-1)), ((TARGET_HART[i]-1) << 18) | (TARGET_PRIO[i] << 0))
+        await Timer(4, units="ns")
+
+    # enable target interrupts in their respective domain
+    for i in range(3):
+        if(TARGET_LEVEL[i] == M_MODE):
+            axi_write_reg(dut, SETIENUM_M_BASE, TARGET_INTP[i])
+        else:
+            axi_write_reg(dut, SETIENUM_S_BASE, TARGET_INTP[i])
+        await Timer(4, units="ns")
+
+    # We now start triggering the interrupts
+    if(TARGET_LEVEL[0] == M_MODE):
+        axi_write_reg(dut, SETIPNUM_M_BASE, TARGET_INTP[0])
+    else:
+        axi_write_reg(dut, SETIPNUM_S_BASE, TARGET_INTP[0])
+    await Timer(4, units="ns")
+    # Write to domain (or other register really) to reset the write lines
+    # This is a bug in the tests and not the hw
+    # We intend to fix this in the future :) 
+    axi_write_reg(dut, DOMAINCFG_M_BASE, (1 << 8) | (1 << 2))
+    await Timer(4, units="ns")
+    
+    # set interrupt 23 (to trigger the raising edge)
+    source                = 0
+    source                = set_or_reg(source, 1, 1, TARGET_INTP[1])
+    dut.i_sources.value   = source
+    await Timer(4, units="ns")
+    # reset source lines
+    source                = 0
+    dut.i_sources.value   = source
+    await Timer(10, units="ns")
+
+    # set interrupt 1 (to trigger the raising edge)
+    source                = set_or_reg(source, 1, 1, TARGET_INTP[2])
+    dut.i_sources.value   = source
+    await Timer(4, units="ns")
+    # reset source lines
+    source                = 0
+    dut.i_sources.value   = source
+    await Timer(10, units="ns")
+
+    target_per_domains = []
+    index = 0
+
+    if (APLIC_TYPE == APLIC_MINIMAL):
+        topi = organize_topi(dut.aplic_top_i.i_aplic_generic_domain_top.i_aplic_domain_regctl_minimal.topi_q.value, NR_IDCs, NR_DOMAINS, 25)
+        target = dut.aplic_top_i.o_Xeip_targets.value
+    elif (APLIC_TYPE == APLIC_SCALABLE):
+        topi_m_q = dut.aplic_top_i.i_aplic_m_domain_top.i_aplic_domain_regctl.topi_q.value
+        topi_s_q = dut.aplic_top_i.i_aplic_s_domain_top.i_aplic_domain_regctl.topi_q.value
+        topi_m = organize_topi(topi_m_q, NR_IDCs, 1, 25)
+        topi_s = organize_topi(topi_s_q, NR_IDCs, 1, 25)
+        target = dut.aplic_top_i.o_Xeip_targets.value
+
+    for i in range(NR_DOMAINS):
+        subrange = target[index:index+(NR_DOMAINS-1)]
+        index = index+(NR_DOMAINS*(i+1))
+        target_per_domains.append(subrange)
+        target_per_domains.reverse()
+    target_per_domains.reverse()
+
+    for i in range(3):
+        try:
+            if (TARGET_LEVEL[i] == M_MODE):
+                assert target_per_domains[0][TARGET_HART[i]-1] == 1, "xtarget does not match with expected value"
+                if (APLIC_TYPE == APLIC_MINIMAL):
+                    assert topi[0][TARGET_HART[i]-1] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
+                else:
+                    assert topi_m[TARGET_HART[i]-1][0] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
+
+            else:
+                assert target_per_domains[1][TARGET_HART[i]-1] == 1, "xtarget does not match with expected value"
+                if (APLIC_TYPE == APLIC_MINIMAL):
+                    assert topi[1][TARGET_HART[i]-1] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
+                else:
+                    assert topi_s[TARGET_HART[i]-1][0] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
+
+        except AssertionError as e:
+            print(f"{RED}AssertionError: {e}{RESET}")
+
 async def generate_clock(dut):
     """Generate clock pulses."""
 
@@ -385,7 +537,10 @@ async def regctl_unit_test(dut):
     await Timer(1, units="ns")
     dut.ni_rst.value = 1
     await Timer(1, units="ns")
-
-    await cocotb.start(n_imsic_aia_embedded_m_s_files(dut))
+    
+    if (IRQC_TYPE == IRQC_APLIC):
+        await cocotb.start(aia_direct(dut))
+    else:
+        await cocotb.start(aia_msi(dut))
     
     await Timer(10000, units="ns")
