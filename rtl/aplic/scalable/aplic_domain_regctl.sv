@@ -43,17 +43,18 @@ module aplic_domain_regctl #(
     output  logic [NR_SRC-1:1][31:0]                    o_target_q,
     `ifdef MSI_MODE
       /**  interface for msi mode */
-    input   logic                                       i_forwarded_valid     ,
-    input   logic [10:0]                                i_intp_forwd_id   ,
+    input   logic                                       i_forwarded_valid,
+    input   logic [10:0]                                i_intp_forwd_id,
     output  logic [31:0]                                o_genmsi,
-    input   logic                                       i_genmsi_sent,
-    `endif
+    input   logic                                       i_genmsi_sent
+    `elsif DIRECT_MODE
       /**  interface for direct mode */
     output  logic [NR_IDCs-1:0][0:0]                    o_idelivery,
     output  logic [NR_IDCs-1:0][0:0]                    o_iforce,
     output  logic [NR_IDCs-1:0][IPRIOLEN-1:0]           o_ithreshold,
     input   logic [NR_IDCs-1:0][25:0]                   i_topi_sugg,
     input   logic [NR_IDCs-1:0]                         i_topi_update
+    `endif
 );
 
 // ==================== LOCAL PARAMETERS ===================
@@ -88,8 +89,10 @@ module aplic_domain_regctl #(
   logic [NR_REG:0][NR_BITS_SRC-1:0]   active_i;
   logic [NR_REG:0][NR_BITS_SRC-1:0]   claimed_forwarded_i;
   logic [NR_REG:0][NR_BITS_SRC-1:0]   in_rectified_qi, in_rectified_di;
+  `ifdef DIRECT_MODE
   logic [NR_IDCs-1:0][25:0]           topi_sugg_i;
   logic [NR_IDCs-1:0]                 topi_update_i;
+  `endif
   /** control */
   logic [2:0]                         setie_select_i, setip_select_i;
   logic [NR_IDCs-1:0][1:0]            iforce_select_i;
@@ -151,6 +154,7 @@ module aplic_domain_regctl #(
   logic [NR_SRC-1:1][31:0]            target_o;
   logic [NR_SRC-1:1]                  target_we;
   logic [NR_SRC-1:1]                  target_re;
+  `ifdef DIRECT_MODE
   // Register idelivery
   logic [NR_IDCs-1:0][0:0]            idelivery_qi, idelivery_di;
   logic [NR_IDCs-1:0][0:0]            idelivery_o;
@@ -167,53 +171,17 @@ module aplic_domain_regctl #(
   logic [NR_IDCs-1:0]                 ithreshold_we;
   logic [NR_IDCs-1:0]                 ithreshold_re;
   // Register topi
-  logic [NR_IDCs-1:0][25:0]           topi_qi, topi_di;
+  logic [NR_IDCs-1:0][25:0]           topi_q, topi_di;
   logic [NR_IDCs-1:0]                 topi_re;
   // Register claimi
   logic [NR_IDCs-1:0]                 claimi_re, claimi_re_prev;
-
-  // ENDIANESS
-  // // Register setipnum_le
-  // logic [31:0]                     setipnum_le_qi, setipnum_le_di;
-  // logic [31:0]                     setipnum_le_o;
-  // logic                            setipnum_le_we;
-  // logic                            setipnum_le_re;
-  // // Register setipnum_be
-  // logic [31:0]                     setipnum_be_qi, setipnum_be_di;
-  // logic [31:0]                     setipnum_be_o;
-  // logic                            setipnum_be_we;
-  // logic                            setipnum_be_re;
-
+  `elsif MSI_MODE
   // Register genmsi
-  logic [31:0]                     genmsi_qi, genmsi_di;
-  logic [31:0]                     genmsi_o;
-  logic                            genmsi_we;
-  logic                            genmsi_re;
-
-  // MSI NOT IMPLEMENTED
-  // // Register mmsiaddrcfg
-  // logic [31:0]                     mmsiaddrcfg_qi, mmsiaddrcfg_di;
-  // logic [31:0]                     mmsiaddrcfg_o;
-  // logic                            mmsiaddrcfg_we;
-  // logic                            mmsiaddrcfg_re;
-
-  // // Register mmsiaddrcfgh
-  // logic [31:0]                     mmsiaddrcfgh_qi, mmsiaddrcfgh_di;
-  // logic [31:0]                     mmsiaddrcfgh_o;
-  // logic                            mmsiaddrcfgh_we;
-  // logic                            mmsiaddrcfgh_re;
-
-  // // Register smsiaddrcfg
-  // logic [31:0]                     smsiaddrcfg_qi, smsiaddrcfg_di;
-  // logic [31:0]                     smsiaddrcfg_o;
-  // logic                            smsiaddrcfg_we;
-  // logic                            smsiaddrcfg_re;
-
-  // // Register smsiaddrcfgh
-  // logic [31:0]                     smsiaddrcfgh_qi, smsiaddrcfgh_di;
-  // logic [31:0]                     smsiaddrcfgh_o;
-  // logic                            smsiaddrcfgh_we;
-  // logic                            smsiaddrcfgh_re;
+  logic [31:0]                        genmsi_qi, genmsi_di;
+  logic [31:0]                        genmsi_o;
+  logic                               genmsi_we;
+  logic                               genmsi_re;
+  `endif
 
   aplic_regmap #(
     .DOMAIN_ADDR(DOMAIN_ADDR),
@@ -304,16 +272,19 @@ module aplic_domain_regctl #(
     .o_setipnum_be(),
     .o_setipnum_be_we(),
     .o_setipnum_be_re(),
+    `ifdef MSI_MODE
     // Register: genmsi
     .i_genmsi(genmsi_qi),
     .o_genmsi(genmsi_o),
     .o_genmsi_we(genmsi_we),
     .o_genmsi_re(genmsi_re),
+    `endif
     // Register: target
     .i_target(target_qi),
     .o_target(target_o),
     .o_target_we(target_we),
     .o_target_re(target_re),
+    `ifdef DIRECT_MODE
     // Register: idelivery
     .i_idelivery(idelivery_qi),
     .o_idelivery(idelivery_o),
@@ -330,11 +301,12 @@ module aplic_domain_regctl #(
     .o_ithreshold_we(ithreshold_we),
     .o_ithreshold_re(ithreshold_re),
     // Register: topi
-    .i_topi(topi_qi),
+    .i_topi(topi_q),
     .o_topi_re(topi_re),
     // Register: claimi
-    .i_claimi(topi_qi),
+    .i_claimi(topi_q),
     .o_claimi_re(claimi_re),
+    `endif
     .i_req(i_req),
     .o_resp(o_resp)
   ); // End of Regmap instance
@@ -494,7 +466,7 @@ module aplic_domain_regctl #(
     `ifdef DIRECT_MODE
       for (int i = 0; i < NR_IDCs; i++) begin
         if ((claimi_re[i] == 1'b1) && (claimi_re_prev[i] == 1'b0)) begin
-          claimed_forwarded_i[topi_qi[i][16 +: NR_SRC_W]/32][topi_qi[i][16 +: NR_SRC_W]%32] = 1'b1;
+          claimed_forwarded_i[topi_q[i][16 +: NR_SRC_W]/32][topi_q[i][16 +: NR_SRC_W]%32] = 1'b1;
         end 
       end
     `elsif MSI_MODE
@@ -506,12 +478,13 @@ module aplic_domain_regctl #(
 // ================================================================
 
 // ============================ IDC ===============================
+  `ifdef DIRECT_MODE
   // Control Unit
   always_comb begin
     for (int i = 0; i < NR_IDCs; i++) begin
       if (iforce_we[i]) begin
         iforce_select_i[i] = W_FORCE;
-      end else if (claimi_re[i] && (topi_qi[i] == 0)) begin
+      end else if (claimi_re[i] && (topi_q[i] == 0)) begin
         iforce_select_i[i] = ZERO_FORCE;
       end else begin
         iforce_select_i[i] = DEFAULT;
@@ -523,7 +496,7 @@ module aplic_domain_regctl #(
     for (int i = 0; i < NR_IDCs; i++) begin
       ithreshold_di[i]  = (ithreshold_we[i]) ? ithreshold_o[i] : ithreshold_qi[i];
       idelivery_di[i]   = (idelivery_we[i]) ? idelivery_o[i] : idelivery_qi[i];
-      topi_di[i]        = ((topi_update_i[i]) || ((topi_sugg_i[i] == 0) && claimi_re[i])) ? topi_sugg_i[i] : topi_qi[i];
+      topi_di[i]        = ((topi_update_i[i]) || ((topi_sugg_i[i] == 0) && claimi_re[i])) ? topi_sugg_i[i] : topi_q[i];
       case (iforce_select_i[i])
         ZERO_FORCE: iforce_di[i]  = '0;
         W_FORCE: iforce_di[i]     = iforce_o[i]; 
@@ -531,6 +504,7 @@ module aplic_domain_regctl #(
       endcase
     end
   end
+  `endif
 // ================================================================
 
 // ========================== GENMSI ==============================
@@ -563,20 +537,19 @@ module aplic_domain_regctl #(
     assign o_sugg_setip[i]        = sugg_setip_i[i];
     assign o_claimed_forwarded[i] = claimed_forwarded_i[i];
   end
+  `ifdef DIRECT_MODE
   for (genvar i = 0; i < NR_IDCs; i++) begin
     assign o_idelivery[i]         = idelivery_qi[i];
     assign o_iforce[i]            = iforce_qi[i];
     assign o_ithreshold[i]        = ithreshold_qi[i];
+    assign topi_sugg_i[i]         = i_topi_sugg[i];
+    assign topi_update_i[i]       = i_topi_update[i];
   end
-
+  `endif
   /** Assign inputs to the corresponding registers */
   for (genvar i = 0; i <= NR_REG; i++) begin
     assign setip_di[i]            = i_intp_pen[i];
     assign in_rectified_di[i]     = i_rectified_src[i];
-  end
-  for (genvar i = 0; i < NR_IDCs; i++) begin
-    assign topi_sugg_i[i]         = i_topi_sugg[i];
-    assign topi_update_i[i]       = i_topi_update[i];
   end
   `ifdef MSI_MODE
     assign o_genmsi = genmsi_qi;
@@ -595,14 +568,9 @@ module aplic_domain_regctl #(
       clripnum_qi <= '0;
       setienum_qi <= '0;
       clrienum_qi <= '0;
-      claimi_re_prev <= '0;
-      //  setipnum_le_qi <= '0;
-      //  setipnum_be_qi <= '0;
-      //  mmsiaddrcfg_qi <= '0;
-      //  mmsiaddrcfgh_qi <= '0;
-      //  smsiaddrcfg_qi <= '0;
-      //  smsiaddrcfgh_qi <= '0;   
+      `ifdef MSI_MODE
       genmsi_qi <= '0;
+      `endif
       for (int i = 1; i < NR_SRC; i++) begin
         sourcecfg_qi[i] <= '0;
         target_qi[i] <= '0;
@@ -614,26 +582,24 @@ module aplic_domain_regctl #(
         setie_qi[i] <= '0;
         clrie_qi[i] <= '0;
       end
+      `ifdef DIRECT_MODE
+      claimi_re_prev <= '0;
       for (int i = 0; i < NR_IDCs; i++) begin
         idelivery_qi[i] <= '0;
         iforce_qi[i] <= '0;
         ithreshold_qi[i] <= '0;
-        topi_qi[i] <= '0;
+        topi_q[i] <= '0;
       end
+      `endif
     end else begin
         domaincfg_qi <= domaincfg_di;
         setipnum_qi <= setipnum_di;
         clripnum_qi <= clripnum_di;
         setienum_qi <= setienum_di;
         clrienum_qi <= clrienum_di;
-        claimi_re_prev <= claimi_re;
-        //  setipnum_le_qi <= setipnum_le_di;
-        //  setipnum_be_qi <= setipnum_be_di;
-        //  mmsiaddrcfg_qi <= mmsiaddrcfg_di;
-        //  mmsiaddrcfgh_qi <= mmsiaddrcfgh_di;
-        //  smsiaddrcfg_qi <= smsiaddrcfg_di;
-        //  smsiaddrcfgh_qi <= smsiaddrcfgh_di;
+        `ifdef MSI_MODE
         genmsi_qi <= genmsi_di;
+        `endif
         for (int i = 1; i < NR_SRC; i++) begin
           sourcecfg_qi[i] <= sourcecfg_di[i];
           target_qi[i] <= target_di[i];    
@@ -645,12 +611,15 @@ module aplic_domain_regctl #(
           setie_qi[i] <= setie_di[i];
           clrie_qi[i] <= clrie_di[i];
         end
+        `ifdef DIRECT_MODE
+        claimi_re_prev <= claimi_re;
         for (int i = 0; i < NR_IDCs; i++) begin
           idelivery_qi[i] <= idelivery_di[i];
           iforce_qi[i] <= iforce_di[i];
           ithreshold_qi[i] <= ithreshold_di[i];
-          topi_qi[i] <= topi_di[i];
+          topi_q[i] <= topi_di[i];
         end
+        `endif
     end
   end
 // ================================================================

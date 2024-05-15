@@ -5,7 +5,7 @@
 * Author: F.Marques <fmarques_00@protonmail.com>
 */
 
-module aplic_top_minimal_wrapper #(
+module aia_wrapper #(
     parameter int                                       NR_DOMAINS    = 2           ,
     parameter int                                       NR_SRC        = 32          ,
     parameter int                                       NR_SRC_IMSIC  = 64          ,

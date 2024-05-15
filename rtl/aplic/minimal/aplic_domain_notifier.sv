@@ -34,6 +34,8 @@ module aplic_domain_notifier #(
     parameter unsigned                                              NR_VS_FILES_PER_IMSIC= 64'h1,
     parameter unsigned                                              IMSIC_M_ADDR_TARGET= 64'h24000000,
     parameter unsigned                                              IMSIC_S_ADDR_TARGET= 64'h28000000,
+    parameter type                                                  axi_req_t       = ariane_axi::req_t ,
+    parameter type                                                  axi_rsp_t       = ariane_axi::resp_t,
     // DO NOT EDIT BY PARAMETER
     parameter int                                                   NR_BITS_SRC     = (NR_SRC > 32) ? 32 : NR_SRC,
     parameter int                                                   NR_REG          = (NR_SRC-1)/32,
@@ -60,8 +62,8 @@ module aplic_domain_notifier #(
     output  logic [NR_DOMAINS-1:0]                                  o_genmsi_sent    ,
     output  logic                                                   o_forwarded_valid,
     output  logic [10:0]                                            o_intp_forwd_id  ,
-    output  ariane_axi::req_t                                       o_req            ,
-    input   ariane_axi::resp_t                                      i_resp
+    output  axi_req_t                                               o_req            ,
+    input   axi_rsp_t                                               i_resp
     `endif
 );
 
@@ -71,57 +73,50 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
 
 `ifdef DIRECT_MODE
     
-    logic [NR_DOMAINS-1:0][NR_IDCs-1:0]         has_valid_intp;
-    logic [NR_DOMAINS-1:0][NR_IDC_W-1:0]        idc_index;
-    logic [NR_DOMAINS-1:0][9:0]                 intp_id;
-    logic [NR_DOMAINS-1:0][7:0]                 intp_prio;
-    logic [NR_DOMAINS-1:0][IPRIOLEN-1:0]        prev_higher_prio;
+    logic [NR_IDCs-1:0][NR_DOMAINS-1:0]                      has_valid_intp;
+    logic [NR_IDCs-1:0][NR_DOMAINS-1:0][9:0]                 intp_id;
+    logic [NR_IDCs-1:0][NR_DOMAINS-1:0][IPRIOLEN-1:0]        intp_prio;
+    logic [NR_IDCs-1:0][NR_DOMAINS-1:0][IPRIOLEN-1:0]        prev_higher_prio;
 
-    /** Detect highest pending-enabled interrut and notify the hart */
     always_comb begin
-        /** internal signals reset values*/
         has_valid_intp      = '0;
-        idc_index           = '0;
         intp_id             = '0;
         intp_prio           = '0;
         prev_higher_prio    = '1;
-        /** outputs reset values */
         o_topi_sugg         = '0;
         o_topi_update       = '0;
 
-        for (int i = 0; i < NR_DOMAINS; i++) begin
-            /** Find the the highest pend. and en. intp per domain algorithm */
-            for (int j = 1; j < NR_SRC; j++) begin
-                /** Check if the interrupt is pending and enabled, active in the domain, 
-                    and is also the higher (lower number) priority*/
-                if (i_setip_q[j/32][j%32] && i_setie_q[j/32][j%32] &&
-                    (i_intp_domain[j] == i[0]) &&
-                    (i_target_q[j][IPRIOLEN-1:0] < prev_higher_prio[i][IPRIOLEN-1:0])) begin
-                    intp_id[i]          = j[9:0];
-                    intp_prio[i]        = i_target_q[j][7:0];
-                    prev_higher_prio[i] = intp_prio[i][IPRIOLEN-1:0];
-                    idc_index[i]        = i_target_q[j][TARGET_HART_IDX +: NR_IDC_W];
+        for (int i = 0; i < NR_IDCs; i++) begin
+            for (int j = 0; j < NR_DOMAINS; j++) begin
+                for (int w = 1; w < NR_SRC; w++) begin
+                    if (i_setip_q[w/32][w%32] && i_setie_q[w/32][w%32] &&
+                        (i_intp_domain[w] == j[0]) && (i_target_q[w][TARGET_HART_IDX +: NR_IDC_W] == i[NR_IDC_W-1:0]) && 
+                        (i_target_q[w][IPRIOLEN-1:0] < prev_higher_prio[i][j])) begin
+                        intp_id[i][j]          = w[9:0];
+                        intp_prio[i][j]        = i_target_q[w][IPRIOLEN-1:0];
+                        prev_higher_prio[i][j] = intp_prio[i][j];
+                    end
                 end
             end
+        end
 
-            /** Hart/IDC related logic */
-            if (intp_id[i] != '0) begin
-                /** Is the interrupt able to contribute to IDC interrupt? */
-                if((intp_prio[i][IPRIOLEN-1:0] < i_ithreshold[i][idc_index[i]]) || 
-                   (i_ithreshold[i][idc_index[i]] == 0)) begin
-                    has_valid_intp[i][idc_index[i]] = 1'b1;
-                    o_topi_sugg[i][idc_index[i]]    = {intp_id[i], 8'b0, intp_prio[i]};
-                    o_topi_update[i][idc_index[i]]  = 1'b1;
+        for (int i = 0; i < NR_IDCs; i++) begin
+            for (int j = 0; j < NR_DOMAINS; j++) begin
+                if((intp_id[i][j] != '0) && ((intp_prio[i][j] < i_ithreshold[j][i]) || 
+                   (i_ithreshold[j][i] == 0))) begin
+                    has_valid_intp[i][j] = 1'b1;
+                    o_topi_sugg[j][i]    = {intp_id[i][j], 8'b0, {8-IPRIOLEN{1'b0}}, intp_prio[i][j]};
+                    o_topi_update[j][i]  = 1'b1;
                 end
             end
-        end 
+        end
     end
 
     /** CPU line logic*/
     for (genvar i = 0; i < NR_DOMAINS; i++) begin
         for (genvar j = 0; j < NR_IDCs; j++) begin
             assign o_Xeip_targets[i][j] =   i_domaincfgIE[i] & i_idelivery[i][j] & 
-                                            (has_valid_intp[i][j] | i_iforce[i][j]);
+                                            (has_valid_intp[j][i] | i_iforce[i][j]);
         end
     end
 
@@ -168,9 +163,10 @@ localparam NR_IDC_W                 = (NR_IDCs == 1) ? 1 : $clog2(NR_IDCs);
             if (i_genmsi[i][12] && !axi_busy_q) begin
                 intp_forwd_id_d = '0;
                 data_d          = {32'b0, {21{1'b0}}, i_genmsi[i][10:0]};
-                base_addr_target= (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET : IMSIC_S_ADDR_TARGET  + ({{AXI_ADDR_WIDTH-32{1'b0}}, i_target_q[i]} & TARGET_GUEST_IDX_MASK);
-                hart_addr_offset= (!i_intp_domain[i]) ? {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 : 
-                                   {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[i][31:18]} * 'h1000 * (NR_VS_FILES_PER_IMSIC + 'h1);
+                base_addr_target= (!i_intp_domain[i]) ? IMSIC_M_ADDR_TARGET : 
+                IMSIC_S_ADDR_TARGET  + ({{AXI_ADDR_WIDTH-32{1'b0}}, i_target_q[data_d[31:0]]} & TARGET_GUEST_IDX_MASK);
+                hart_addr_offset= (!i_intp_domain[i]) ? {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[data_d[31:0]][31:18]} * 'h1000 : 
+                                   {{AXI_ADDR_WIDTH-14{1'b0}}, i_target_q[data_d[31:0]][31:18]} * 'h1000 * (NR_VS_FILES_PER_IMSIC + 'h1);
                 addr_d          = base_addr_target + hart_addr_offset; 
                 genmsi_sent[i]  = 1'b1;
                 ready_i         = 1'b1;

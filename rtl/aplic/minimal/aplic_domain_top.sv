@@ -21,6 +21,8 @@ module aplic_domain_top #(
    parameter unsigned                           NR_VS_FILES_PER_IMSIC= 64'h1,
    parameter type                               reg_req_t     = logic,
    parameter type                               reg_rsp_t     = logic,
+   parameter type                               axi_req_t     = ariane_axi::req_t ,
+   parameter type                               axi_rsp_t     = ariane_axi::resp_t,
    // DO NOT EDIT BY PARAMETER
    parameter int                                IPRIOLEN      = (MIN_PRIO == 1) ? 1 : $clog2(MIN_PRIO),
    parameter int                                NR_BITS_SRC   = 32,
@@ -36,8 +38,8 @@ module aplic_domain_top #(
    /** Interrupt Notification to Harts. One per priv. level per hart. */
    ,output logic [NR_DOMAINS-1:0][NR_IDCs-1:0]   o_Xeip_targets
    `elsif MSI_MODE
-   ,output ariane_axi::req_t                    o_req_msi         ,
-   input   ariane_axi::resp_t                   i_resp_msi
+   ,output axi_req_t                            o_req_msi         ,
+   input   axi_rsp_t                            i_resp_msi
    `endif
 );
 // ================== INTERCONNECTION SIGNALS =====================
@@ -96,7 +98,9 @@ module aplic_domain_top #(
       .NR_SRC                 ( NR_SRC                ),      
       .MIN_PRIO               ( MIN_PRIO              ),  
       .NR_IDCs                ( NR_IDCs               ),
-      .NR_VS_FILES_PER_IMSIC  ( NR_VS_FILES_PER_IMSIC )
+      .NR_VS_FILES_PER_IMSIC  ( NR_VS_FILES_PER_IMSIC ),
+      .axi_req_t              ( axi_req_t             ),
+      .axi_rsp_t              ( axi_rsp_t             )
    ) i_aplic_domain_notifier_minimal (
       .i_clk                  ( i_clk                 ),
       .ni_rst                 ( ni_rst                ),
