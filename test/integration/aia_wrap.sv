@@ -5,11 +5,13 @@
 * Author: F.Marques <fmarques_00@protonmail.com>
 */
 
-module aplic_top_minimal_wrapper #(
+module aia_wrapper #(
     parameter int                                       NR_DOMAINS    = 2           ,
     parameter int                                       NR_SRC        = 32          ,
+    parameter int                                       XLEN          = 64          ,
     parameter int                                       NR_SRC_IMSIC  = 64          ,
     parameter int                                       MIN_PRIO      = 6           ,
+    parameter int unsigned                              NR_IDCs       = 2           ,
     parameter int unsigned                              NR_IMSICS     = 4           ,
     parameter int unsigned                              NR_VS_FILES_PER_IMSIC = 1   ,
     //
@@ -18,15 +20,18 @@ module aplic_top_minimal_wrapper #(
 ) (
     input   logic                                       i_clk                       ,
     input   logic                                       ni_rst                      ,
+    `ifdef MSI_MODE
     /**========================== IMSIC ==============================*/     
     /** Register config: CRSs interface From/To interrupt files */
     input  logic [NR_IMSICS-1:0]                        i_select_imsic              ,
     input  logic [1:0]                                  i_priv_lvl                  ,
     input  logic [VS_INTP_FILE_LEN:0]                   i_vgein                     ,
-    input  logic [32-1:0]                               i_imsic_addr                ,
-    input  logic [32-1:0]                               i_imsic_data                ,
+    input  logic [31:0]                                 i_imsic_addr                ,
+    input  logic [XLEN-1:0]                             i_imsic_data                ,
     input  logic                                        i_imsic_we                  ,
     input  logic                                        i_imsic_claim               ,
+    output logic [NR_IMSICS-1:0][NR_INTP_FILES-1:0][$clog2(NR_SRC_IMSIC)-1:0] xtopei,
+    `endif
     /** Register config: AXI interface From/To system bus */
     input   logic [31:0]                                reg_intf_req_a32_d32_addr   ,
     input   logic                                       reg_intf_req_a32_d32_write  ,
@@ -36,8 +41,7 @@ module aplic_top_minimal_wrapper #(
     output  logic [31:0]                                reg_intf_resp_d32_rdata     ,
     output  logic                                       reg_intf_resp_d32_error     ,
     output  logic                                       reg_intf_resp_d32_ready     ,
-    input   logic [NR_SRC-1:0]                          i_sources                   ,
-    output  logic [NR_IMSICS-1:0][NR_INTP_FILES-1:0][$clog2(NR_SRC_IMSIC)-1:0]       xtopei
+    input   logic [NR_SRC-1:0]                          i_sources
 );
 
 reg_intf::reg_intf_req_a32_d32                          i_req;
@@ -61,13 +65,16 @@ assign reg_intf_resp_d32_ready = o_resp.ready;
 aplic_top #(
    .NR_SRC              ( NR_SRC                            ),
    .MIN_PRIO            ( MIN_PRIO                          ),
+   `ifdef MSI_MODE
    .NR_VS_FILES_PER_IMSIC ( NR_VS_FILES_PER_IMSIC           ),
+   `elsif DIRECT_MODE
+   .NR_IDCs             ( NR_IDCs                           ),
+   `endif      
    .reg_req_t           ( reg_intf::reg_intf_req_a32_d32    ),
    .reg_rsp_t           ( reg_intf::reg_intf_resp_d32       ),
    .axi_req_t           ( ariane_axi::req_t                 ),
    .axi_rsp_t           ( ariane_axi::resp_t                )
-
-) aplic_top_minimal_i (
+) aplic_top_i (
    .i_clk               ( i_clk                             ),
    .ni_rst              ( ni_rst                            ),
    .i_irq_sources       ( i_sources                         ),
@@ -85,8 +92,8 @@ aplic_top #(
 
 logic [NR_IMSICS-1:0][1:0]                               priv_lvl      ;
 logic [NR_IMSICS-1:0][VS_INTP_FILE_LEN:0]                vgein         ;
-logic [NR_IMSICS-1:0][32-1:0]                            imsic_addr    ;
-logic [NR_IMSICS-1:0][32-1:0]                            imsic_data    ;
+logic [NR_IMSICS-1:0][31:0]                              imsic_addr    ;
+logic [NR_IMSICS-1:0][XLEN-1:0]                          imsic_data    ;
 logic [NR_IMSICS-1:0]                                    imsic_we      ;
 logic [NR_IMSICS-1:0]                                    imsic_claim   ;
 
@@ -113,8 +120,8 @@ end
 
 imsic_top #(
     .NR_SRC             ( NR_SRC_IMSIC      ),
-    .MIN_PRIO           ( MIN_PRIO          ),
     .NR_IMSICS          ( NR_IMSICS         ),
+    .XLEN               ( XLEN              ),
     .NR_VS_FILES_PER_IMSIC ( NR_VS_FILES_PER_IMSIC ),
     .AXI_ID_WIDTH       ( 4                 ),
     .axi_req_t          ( ariane_axi::req_t ),
