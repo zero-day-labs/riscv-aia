@@ -4,7 +4,6 @@ import cocotb
 from cocotb.triggers import RisingEdge, FallingEdge, Timer
 import math
 from aia_define import APLIC_TYPE, IRQC_TYPE
-from cocotb.binary import BinaryValue
 
 APLIC_MINIMAL = 1
 APLIC_SCALABLE = 2
@@ -265,6 +264,7 @@ async def aia_msi(dut):
 
     XLEN = 64
     EIE_OFF = [(TARGET_INTP[0]//XLEN)*2, (TARGET_INTP[1]//XLEN)*2, (TARGET_INTP[2]//XLEN)*2]
+    # needs refact. Is TARGET_APLIC_MODE needed?
     TARGET_APLIC_MODE = [APLIC_M_BASE, APLIC_M_BASE, APLIC_M_BASE]
     for i in range(3):
         if (TARGET_LEVEL[i] == S_MODE):
@@ -351,31 +351,25 @@ async def aia_msi(dut):
         try:
             if (TARGET_LEVEL[i] == M_MODE):
                 assert xtopei_array[TARGET_HART[i]-1][0] == TARGET_INTP[i], "Read xtopei does not match the expected value"
+                print(f"{GREEN}PASSED: xtopei[{TARGET_HART[i]-1}][M] = {TARGET_INTP[i]}{RESET}")
             else:
                 assert xtopei_array[TARGET_HART[i]-1][TARGET_GUEST[i]+1] == TARGET_INTP[i]
+                if (TARGET_GUEST[i] == 0):
+                    print(f"{GREEN}PASSED: xtopei[{TARGET_HART[i]-1}][S] = {TARGET_INTP[i]}{RESET}")
+                else:
+                    print(f"{GREEN}PASSED: xtopei[{TARGET_HART[i]-1}][VS][{TARGET_GUEST[i]-1}] = {TARGET_INTP[i]}{RESET}")
+
         except AssertionError as e:
             print(f"{RED}AssertionError: {e}{RESET}")
 
-    # clear the pending interrupt 
-    await Timer(ONE_CYCLE*3, units="ns")
-    imsic_write_xtopei(dut, TARGET_HART[0], TARGET_LEVEL[0], TARGET_GUEST[0])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_stop_write(dut)
-    await Timer(ONE_CYCLE, units="ns")
+    print(f"{YELLOW}Strat claiming interrupts...")
 
-    # clear the pending interrupt 23
-    await Timer(ONE_CYCLE*3, units="ns")
-    imsic_write_xtopei(dut, TARGET_HART[1], TARGET_LEVEL[1], TARGET_GUEST[1])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_stop_write(dut)
-    await Timer(ONE_CYCLE, units="ns")
-
-    # clear the pending interrupt 1
-    await Timer(ONE_CYCLE*3, units="ns")
-    imsic_write_xtopei(dut, TARGET_HART[2], TARGET_LEVEL[2], TARGET_GUEST[2])
-    await Timer(ONE_CYCLE, units="ns")
-    imsic_stop_write(dut)
-    await Timer(ONE_CYCLE, units="ns")
+     # Clear the pending interrupt
+    for i in range(3):
+        imsic_write_xtopei(dut, TARGET_HART[i], TARGET_LEVEL[i], TARGET_GUEST[i])
+        await Timer(ONE_CYCLE*3, units="ns")
+        imsic_stop_write(dut)
+        await Timer(ONE_CYCLE, units="ns")
 
     xtopei_array = organize_xtopei(dut.xtopei.value, NR_IMSICS, NR_FILES_IMSIC, clog2(IMSIC_MAX_SRC-1))
 
@@ -383,8 +377,14 @@ async def aia_msi(dut):
         try:
             if (TARGET_LEVEL[i] == M_MODE):
                 assert xtopei_array[TARGET_HART[i]-1][0] == 0, "Read xtopei does not match the expected value"
+                print(f"{GREEN}PASSED: xtopei[{TARGET_HART[i]-1}][M] = 0{RESET}")
             else:
                 assert xtopei_array[TARGET_HART[i]-1][TARGET_GUEST[i]+1] == 0
+                if (TARGET_GUEST[i] == 0):
+                    print(f"{GREEN}PASSED: xtopei[{TARGET_HART[i]-1}][S] = 0{RESET}")
+                else:
+                    print(f"{GREEN}PASSED: xtopei[{TARGET_HART[i]-1}][VS][{TARGET_GUEST[i]-1}] = 0{RESET}")
+
         except AssertionError as e:
             print(f"{RED}AssertionError: {e}{RESET}")
 
@@ -500,13 +500,62 @@ async def aia_direct(dut):
                     assert topi[0][TARGET_HART[i]-1] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
                 else:
                     assert topi_m[TARGET_HART[i]-1][0] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
-
+                print(f"{GREEN}PASSED: topi[{TARGET_HART[i]-1}][M][x:16] = {TARGET_INTP[i]}{RESET}")
             else:
                 assert target_per_domains[1][TARGET_HART[i]-1] == 1, "xtarget does not match with expected value"
                 if (APLIC_TYPE == APLIC_MINIMAL):
                     assert topi[1][TARGET_HART[i]-1] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
                 else:
                     assert topi_s[TARGET_HART[i]-1][0] == (TARGET_INTP[i] << 16) | (TARGET_PRIO[i] << 0), "topi does not match with expected value"
+                print(f"{GREEN}PASSED: topi[{TARGET_HART[i]-1}][S][x:16] = {TARGET_INTP[i]}{RESET}")
+
+        except AssertionError as e:
+            print(f"{RED}AssertionError: {e}{RESET}")
+
+    print(f"{YELLOW}Strat claiming interrupts...")
+    
+    for i in range(3):
+        if (TARGET_LEVEL[i] == M_MODE):
+            axi_read_reg(dut, (CLAIMI_M_BASE+(0x20*(TARGET_HART[i]-1))))
+        else:
+            axi_read_reg(dut, (CLAIMI_S_BASE+(0x20*(TARGET_HART[i]-1))))
+        await Timer(4, units="ns")
+
+    if (APLIC_TYPE == APLIC_MINIMAL):
+        topi = organize_topi(dut.aplic_top_i.i_aplic_generic_domain_top.i_aplic_domain_regctl_minimal.topi_q.value, NR_IDCs, NR_DOMAINS, 25)
+        target = dut.aplic_top_i.o_Xeip_targets.value
+    elif (APLIC_TYPE == APLIC_SCALABLE):
+        topi_m_q = dut.aplic_top_i.i_aplic_m_domain_top.i_aplic_domain_regctl.topi_q.value
+        topi_s_q = dut.aplic_top_i.i_aplic_s_domain_top.i_aplic_domain_regctl.topi_q.value
+        topi_m = organize_topi(topi_m_q, NR_IDCs, 1, 25)
+        topi_s = organize_topi(topi_s_q, NR_IDCs, 1, 25)
+        target = dut.aplic_top_i.o_Xeip_targets.value
+
+    index = 0
+    target_per_domains = []
+    for i in range(NR_DOMAINS):
+        subrange = target[index:index+(NR_DOMAINS-1)]
+        index = index+(NR_DOMAINS*(i+1))
+        target_per_domains.append(subrange)
+        target_per_domains.reverse()
+    target_per_domains.reverse()
+
+    for i in range(3):
+        try:
+            if (TARGET_LEVEL[i] == M_MODE):
+                assert target_per_domains[0][TARGET_HART[i]-1] == 0, "xtarget does not match with expected value"
+                if (APLIC_TYPE == APLIC_MINIMAL):
+                    assert topi[0][TARGET_HART[i]-1] == 0, "topi does not match with expected value"
+                else:
+                    assert topi_m[TARGET_HART[i]-1][0] == 0, "topi does not match with expected value"
+                print(f"{GREEN}PASSED: topi[{TARGET_HART[i]-1}][M][x:16] = 0{RESET}")
+            else:
+                assert target_per_domains[1][TARGET_HART[i]-1] == 0, "xtarget does not match with expected value"
+                if (APLIC_TYPE == APLIC_MINIMAL):
+                    assert topi[1][TARGET_HART[i]-1] == 0, "topi does not match with expected value"
+                else:
+                    assert topi_s[TARGET_HART[i]-1][0] == 0, "topi does not match with expected value"
+                print(f"{GREEN}PASSED: topi[{TARGET_HART[i]-1}][S][x:16] = 0{RESET}")
 
         except AssertionError as e:
             print(f"{RED}AssertionError: {e}{RESET}")

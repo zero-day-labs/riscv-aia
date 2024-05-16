@@ -1,5 +1,5 @@
 //
-module aia_embedded_wrapper #(
+module ieaia_wrapper #(
     parameter int                                       XLEN                    = 64,
     parameter int                                       NR_SRC                  = 32,
     parameter int unsigned                              NR_SRC_IMSIC            = 64,
@@ -28,6 +28,7 @@ module aia_embedded_wrapper #(
     input  logic [XLEN-1:0]                             i_imsic_data                ,
     input  logic                                        i_imsic_we                  ,
     input  logic                                        i_imsic_claim               ,
+    output logic [NR_IMSICS-1:0][NR_INTP_FILES-1:0][$clog2(NR_SRC_IMSIC)-1:0] xtopei,
     /** Register config: AXI interface From/To system bus */
     input   logic [31:0]                                reg_intf_req_a32_d32_addr   ,
     input   logic                                       reg_intf_req_a32_d32_write  ,
@@ -40,29 +41,32 @@ module aia_embedded_wrapper #(
     input   logic [NR_SRC-1:0]                          i_sources         
 );
 
-reg_intf::reg_intf_req_a32_d32                          i_aplic_confg_req;
-reg_intf::reg_intf_resp_d32                             o_aplic_confg_resp;
 
-assign i_aplic_confg_req.addr   = reg_intf_req_a32_d32_addr;
-assign i_aplic_confg_req.write  = reg_intf_req_a32_d32_write;
-assign i_aplic_confg_req.wdata  = reg_intf_req_a32_d32_wdata;
-assign i_aplic_confg_req.wstrb  = reg_intf_req_a32_d32_wstrb;
-assign i_aplic_confg_req.valid  = reg_intf_req_a32_d32_valid;
+/** APLIC configuration channel */
+reg_intf::reg_intf_req_a32_d32              i_aplic_confg_req;
+reg_intf::reg_intf_resp_d32                 o_aplic_confg_resp;
+/** IMSIC island MSI channel */
+ariane_axi::req_t                           req_msi;
+ariane_axi::resp_t                          resp_msi;
+/** IMSIC island CSRs interface*/
+logic [NR_IMSICS-1:0][1:0]                  priv_lvl;
+logic [NR_IMSICS-1:0][VS_INTP_FILE_LEN:0]   vgein;
+logic [NR_IMSICS-1:0][31:0]                 imsic_addr;
+logic [NR_IMSICS-1:0][XLEN-1:0]             imsic_data;
+logic [NR_IMSICS-1:0]                       imsic_we;
+logic [NR_IMSICS-1:0]                       imsic_claim;
+
+
+assign i_aplic_confg_req.addr  = reg_intf_req_a32_d32_addr;
+assign i_aplic_confg_req.write = reg_intf_req_a32_d32_write;
+assign i_aplic_confg_req.wdata = reg_intf_req_a32_d32_wdata;
+assign i_aplic_confg_req.wstrb = reg_intf_req_a32_d32_wstrb;
+assign i_aplic_confg_req.valid = reg_intf_req_a32_d32_valid;
 
 assign reg_intf_resp_d32_rdata = o_aplic_confg_resp.rdata;
 assign reg_intf_resp_d32_error = o_aplic_confg_resp.error;
 assign reg_intf_resp_d32_ready = o_aplic_confg_resp.ready;
 
-/** IMSIC island MSI channel */
-ariane_axi::req_t                           req_msi;
-ariane_axi::resp_t                          resp_msi;
-/** IMSIC island CSRs interface*/
-logic [NR_IMSICS-1:0][1:0]                  priv_lvl      ;
-logic [NR_IMSICS-1:0][VS_INTP_FILE_LEN:0]   vgein         ;
-logic [NR_IMSICS-1:0][31:0]                 imsic_addr    ;
-logic [NR_IMSICS-1:0][XLEN-1:0]             imsic_data    ;
-logic [NR_IMSICS-1:0]                       imsic_we      ;
-logic [NR_IMSICS-1:0]                       imsic_claim   ;
 
 always_comb begin
     priv_lvl = '0;
@@ -109,7 +113,7 @@ aplic_top #(
    .i_imsic_we          ( imsic_we                          ),    
    .i_imsic_claim       ( imsic_claim                       ),        
    .o_imsic_data        ( ),        
-   .o_xtopei            ( ),    
+   .o_xtopei            ( xtopei                            ),    
    .o_Xeip_targets      ( ),        
    .o_imsic_exception   ( ),            
    .i_imsic_req         ( req_msi                           ),
