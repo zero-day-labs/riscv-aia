@@ -83,7 +83,7 @@ logic [NR_SRC-1:0][2:0]                 intp_pen_src;
                 end
                 LEVEL1, LEVEL0: begin
                     for (int j = 0; j < NR_DOMAINS; j++) begin
-                        if (i_intp_domain[j] == j[0]) begin
+                        if (i_intp_domain[i] == j[0]) begin
                             if(i_domaincfgDM[j])begin
                                 new_intp_src[i]     = FROM_EDGE_DETECTOR;
                                 intp_pen_src[i]     = LEVELXDM1_C;
