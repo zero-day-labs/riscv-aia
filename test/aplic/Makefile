@@ -14,33 +14,27 @@ TOPLEVEL_LANG ?= verilog
 
 AXI_FOLDER = $(PWD)/../../../vendor/
 TEST_FOLDER = $(currdir) 
-SRC_FOLDER = $(PWD)/../../../rtl/
 WRAPPER_SRC = $(TEST_FOLDER)./wrap.sv
+SRC_FOLDER = $(PWD)/../../../rtl
 APLIC_FOLDER = $(SRC_FOLDER)/aplic
 APLIC_COMMON_FOLDER = $(APLIC_FOLDER)/common
 APLIC_MINIMAL_FOLDER = $(APLIC_FOLDER)/minimal
 APLIC_SCALABLE_FOLDER = $(APLIC_FOLDER)/scalable
 
 VERILOG_SOURCES += $(AXI_FOLDER)reg_intf_pkg.sv
-VERILOG_SOURCES += $(APLIC_COMMON_FOLDER)/aplic_defines.svh
+VERILOG_SOURCES += $(APLIC_COMMON_FOLDER)/aplic_define_direct.svh
 VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_regctl.sv
-VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_regmap.sv
-VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_domain_notifier.sv
+VERILOG_SOURCES += $(APLIC_MINIMAL_FOLDER)/aplic_regmap_32_2.sv
 VERILOG_SOURCES += $(WRAPPER_SRC)
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
-TOPLEVEL = aplic_domain_notifier_wrapper
+TOPLEVEL = aplic_domain_regctl_wrapper
 
 # MODULE is the basename of the Python test file
-MODULE = aplic_domain_notifier_tb
+MODULE = aplic_domain_regctl_tb
 
-ifeq ($(CLEAN),)
-# include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
-else
-all:
+
+clean::
 	rm -rf $(PWD)/__pycache__
-	rm -rf $(PWD)/sim_build
 	rm $(PWD)/results.xml
-	rm $(PWD)/dump.vcd
-endif

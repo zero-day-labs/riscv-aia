@@ -5,11 +5,11 @@
 * Author: F.Marques <fmarques_00@protonmail.com>
 */
 
-module aplic_domain_gateway_wrapper #(
+module aplic_domain_regctl_wrapper #(
     parameter int                                       NR_DOMAINS  = 2,
     parameter int                                       NR_SRC      = 32,
     parameter int                                       MIN_PRIO    = 6,
-    parameter int                                       NR_IDCs     = 1,
+    parameter int                                       NR_IDCs     = 2,
     // DO NOT EDIT BY PARAMETER
     parameter int                                       IPRIOLEN    = (MIN_PRIO == 1) ? 1 : $clog2(MIN_PRIO),
     parameter int                                       NR_BITS_SRC = (NR_SRC > 31) ? 32 : NR_SRC,
@@ -27,19 +27,17 @@ module aplic_domain_gateway_wrapper #(
     output  logic [31:0]                                reg_intf_resp_d32_rdata     ,
     output  logic                                       reg_intf_resp_d32_error     ,
     output  logic                                       reg_intf_resp_d32_ready     ,
-    input   logic [NR_SRC-1:0]                          i_sources
+    /** Gateway */
+    input   logic [((NR_REG+1)*NR_BITS_SRC)-1:0]        i_rectified_src             
 );
 
-reg_intf::reg_intf_req_a32_d32                          i_req           ;
-reg_intf::reg_intf_resp_d32                             o_resp          ;
-logic [NR_REG:0][NR_BITS_SRC-1:0]                       rectified_src   ;
-logic [NR_DOMAINS-1:0]                                  domaincfgDM     ;
-logic [NR_SRC-1:1]                                      intp_domain     ;
-logic [NR_REG:0][NR_BITS_SRC-1:0]                       active          ;
-logic [NR_REG:0][NR_BITS_SRC-1:0]                       setip           ;
-logic [NR_REG:0][NR_BITS_SRC-1:0]                       claimed         ;
-logic [NR_SRC-1:1][10:0]                                sourcecfg       ;
-logic [NR_REG:0][NR_BITS_SRC-1:0]                       sugg_setip      ;
+reg_intf::reg_intf_req_a32_d32              i_req;
+reg_intf::reg_intf_resp_d32                 o_resp;
+
+logic [NR_REG:0][NR_BITS_SRC-1:0]           rectified_src_i;
+logic [NR_REG:0][NR_BITS_SRC-1:0]           sugg_setip, bypass_gateway;
+logic [NR_REG:0][NR_BITS_SRC-1:0]           active;
+logic [NR_SRC-1:0][2:0]                     intp_pen_src;
 
 assign i_req.addr   = reg_intf_req_a32_d32_addr;
 assign i_req.write  = reg_intf_req_a32_d32_write;
@@ -51,29 +49,35 @@ assign reg_intf_resp_d32_rdata = o_resp.rdata;
 assign reg_intf_resp_d32_error = o_resp.error;
 assign reg_intf_resp_d32_ready = o_resp.ready;
 
+for (genvar i = 0; i <= NR_REG; i++) begin
+    assign rectified_src_i[i] = i_rectified_src[i*NR_BITS_SRC +: NR_BITS_SRC];
+end
+
+assign bypass_gateway = active & sugg_setip;
+
 aplic_domain_regctl #(
     .DOMAIN_M_ADDR          ( 32'hc000000                       ),    
     .DOMAIN_S_ADDR          ( 32'hd000000                       ),     
     .NR_SRC                 ( NR_SRC                            ),      
     .MIN_PRIO               ( MIN_PRIO                          ),  
+    .IPRIOLEN               ( IPRIOLEN                          ),
     .NR_IDCs                ( NR_IDCs                           ),
     .reg_req_t              ( reg_intf::reg_intf_req_a32_d32    ),
     .reg_rsp_t              ( reg_intf::reg_intf_resp_d32       )
-) i_aplic_domain_regctl_minimal (
+) i_aplic_domain_regctl (
     .i_clk                  ( i_clk                 ),
     .ni_rst                 ( ni_rst                ),
     .i_req_cfg              ( i_req                 ),
     .o_resp_cfg             ( o_resp                ),
-    /** Gateway */
-    .o_sourcecfg            ( sourcecfg             ),
+    .o_sourcecfg            (),
     .o_sugg_setip           ( sugg_setip            ),
-    .o_domaincfgDM          ( domaincfgDM           ),
-    .o_intp_domain          ( intp_domain           ),
+    .o_domaincfgDM          (),
+    .o_intp_domain          (),
     .o_active               ( active                ),
-    .o_claimed_or_forwarded ( claimed               ),
-    .i_intp_pen             ( setip                 ),
-    .i_rectified_src        ( rectified_src         ),
-    /** Notifier */
+    .o_claimed_or_forwarded (),
+    .i_intp_pen             ( bypass_gateway        ),
+    .i_rectified_src        ( rectified_src_i       ),
+    .i_intp_pen_src         ( intp_pen_src          ),
     .o_domaincfgIE          (),
     .o_setip                (),
     .o_setie                (),
@@ -85,22 +89,5 @@ aplic_domain_regctl #(
     .i_topi                 (),
     .i_topi_update          ()
 `endif
-);
-
-aplic_domain_gateway #(
-    .NR_SRC                 ( NR_SRC                ),
-    .NR_DOMAINS             ( NR_DOMAINS            )             
-) aplic_domain_gateway (
-    .i_clk                  ( i_clk                 ),                
-    .ni_rst                 ( ni_rst                ),                
-    .i_sources              ( i_sources             ),                        
-    .i_sourcecfg            ( sourcecfg             ),                            
-    .i_domaincfgDM          ( domaincfgDM           ),                                
-    .i_intp_domain          ( intp_domain           ),                        
-    .i_active               ( active                ),                        
-    .i_sugg_setip           ( sugg_setip            ),                                
-    .i_claimed              ( claimed               ),                        
-    .o_setip                ( setip                 ),                    
-    .o_rectified_src        ( rectified_src         )                                    
 );
 endmodule
