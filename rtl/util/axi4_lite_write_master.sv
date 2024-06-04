@@ -10,7 +10,9 @@
 */ 
 module axi_lite_write_master #(
     parameter int unsigned AXI_ADDR_WIDTH = 64,
-    parameter int unsigned AXI_DATA_WIDTH = 64
+    parameter int unsigned AXI_DATA_WIDTH = 64,
+    parameter type         axi_req_t      = ariane_axi::req_t ,
+    parameter type         axi_resp_t     = ariane_axi::resp_t
 ) (
     input logic                      clk_i  ,
     input logic                      rst_ni ,
@@ -18,8 +20,8 @@ module axi_lite_write_master #(
     output logic                     busy_o ,
     input logic [AXI_ADDR_WIDTH-1:0] addr_i ,
     input logic [AXI_DATA_WIDTH-1:0] data_i ,
-    output ariane_axi::req_t         req_o  ,
-    input ariane_axi::resp_t         resp_i
+    output axi_req_t                 req_o  ,
+    input axi_resp_t                 resp_i
 );
 
     typedef enum logic [1:0] {
