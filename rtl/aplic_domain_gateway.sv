@@ -5,25 +5,25 @@
 * Author: F.Marques <fmarques_00@protonmail.com>
 */
 
-module aplic_domain_gateway #(
-    parameter int                                               NR_SRC        = 32,
-    parameter int                                               NR_DOMAINS    = 2 ,
+module aplic_domain_gateway 
+import aplic_pkg::*;
+#(
+    parameter aplic_cfg_t                 AplicCfg      = DefaultAplicCfg,
     // DO NOT EDIT BY PARAMETER
-    parameter int                                               NR_BITS_SRC   = (NR_SRC > 32)? 32 : NR_SRC,
-    parameter int                                               NR_REG        = (NR_SRC-1)/32  
+    parameter int                         NR_REG        = (AplicCfg.NrSources-1)/32  
 ) (
-    input   logic                                               i_clk             ,
-    input   logic                                               ni_rst            ,
-    input   logic [NR_SRC-1:0]                                  i_sources         ,
-    input   logic [NR_SRC-1:1][10:0]                            i_sourcecfg       ,
-    input   logic [NR_DOMAINS-1:0]                              i_domaincfgDM     ,
-    input   logic [NR_SRC-1:1]                                  i_intp_domain     ,
-    input   logic [NR_REG:0][NR_BITS_SRC-1:0]                   i_active          ,
-    input   logic [NR_REG:0][NR_BITS_SRC-1:0]                   i_sugg_setip      ,
-    input   logic [NR_REG:0][NR_BITS_SRC-1:0]                   i_claimed         ,
-    output  logic [NR_REG:0][NR_BITS_SRC-1:0]                   o_setip           ,
-    output  logic [NR_SRC-1:0]                                  o_rectified_src   ,
-    output  logic [NR_SRC-1:0][2:0]                             o_intp_pen_src
+    input   logic                                       i_clk,
+    input   logic                                       ni_rst,
+    input   logic  i_domaincfgDM                        [AplicCfg.NrDomains-1:0],
+    input   logic [AplicCfg.NrSources-1:0]              i_sources,
+    input   sourcecfg_t [AplicCfg.NrSources-1:1]        i_sourcecfg,
+    input   intp_domain_t [AplicCfg.NrSources-1:1]      i_intp_domain,
+    input   aia_bitmap_t [NR_REG:0]                     i_active,
+    input   aia_bitmap_t [NR_REG:0]                     i_claimed,
+    input   setip_t [NR_REG:0]                          i_sugg_setip,
+    output  setip_t [NR_REG:0]                          o_setip,
+    output  logic [AplicCfg.NrSources-1:0]              o_rectified_src,
+    output  logic [AplicCfg.NrSources-1:0][2:0]         o_intp_pen_src
 );
 
 // ==================== LOCAL PARAMETERS ===================
@@ -44,33 +44,33 @@ module aplic_domain_gateway #(
     localparam FROM_EDGE_DETECTOR   = 1'b1;
 // =========================================================
 
-/** Internal signals*/
-logic [NR_SRC-1:0]                      rectified_src, rectified_src_q;
-logic [NR_REG:0][NR_BITS_SRC-1:0]       new_intp;
-/** Control signals */
-logic [NR_SRC-1:0]                      new_intp_src;
-logic [NR_SRC-1:0][2:0]                 intp_pen_src;
+    /** Internal signals*/
+    logic [AplicCfg.NrSources-1:0]          rectified_src, rectified_src_q;
+    aia_bitmap_t [NR_REG:0]                 new_intp;
+    /** Control signals */
+    logic [AplicCfg.NrSources-1:0]          new_intp_src;
+    logic [AplicCfg.NrSources-1:0][2:0]     intp_pen_src;
 
 // ===================== Control Logic =====================
     always_comb begin
-        for (integer i = 1; i < NR_SRC; i++) begin
+        for (integer i = 1; i < AplicCfg.NrSources; i++) begin
             new_intp_src[i]                 = FROM_RECTIFIER;
             intp_pen_src[i]                 = INACTIVE_C;
 
-            case (i_sourcecfg[i][2:0])
-                INACTIVE: begin
+            case (i_sourcecfg[i].ddf.nd.sm)
+                APLIC_SM_INACTIVE: begin
                     intp_pen_src[i]         = INACTIVE_C;
                 end
-                DETACHED: begin
+                APLIC_SM_DETACHED: begin
                     intp_pen_src[i]         = DETACHED_C;
                 end
-                EDGE1, EDGE0: begin
+                APLIC_SM_EDGE1, APLIC_SM_EDGE0: begin
                     new_intp_src[i]         = FROM_EDGE_DETECTOR;
                     intp_pen_src[i]         = EDGEX_C;
                 end
-                LEVEL1, LEVEL0: begin
-                    for (int j = 0; j < NR_DOMAINS; j++) begin
-                        if (i_intp_domain[i] == j[0]) begin
+                APLIC_SM_LEVEL1, APLIC_SM_LEVEL0: begin
+                    for (int j = 0; j < AplicCfg.NrDomains; j++) begin
+                        if (i_intp_domain[i] == j[AplicCfg.NrDomainsW-1:0]) begin
                             if(i_domaincfgDM[j])begin
                                 new_intp_src[i]     = FROM_EDGE_DETECTOR;
                                 intp_pen_src[i]     = LEVELXDM1_C;
@@ -91,27 +91,27 @@ logic [NR_SRC-1:0][2:0]                 intp_pen_src;
     assign o_intp_pen_src = intp_pen_src;
 // =========================================================
 
-/** Rectify the input*/
-always_comb begin
-    for (int i = 1; i < NR_SRC; i++) begin
-        if ((i_sourcecfg[i][2:0] == INACTIVE) || (i_sourcecfg[i][2:0] == DETACHED)) begin
-            rectified_src[i] = 0;
-        end else begin
-            rectified_src[i] = i_sources[i] ^ i_sourcecfg[i][0];
+    /** Rectify the input*/
+    always_comb begin
+        for (int i = 1; i < AplicCfg.NrSources; i++) begin
+            if ((i_sourcecfg[i].ddf.nd.sm == APLIC_SM_INACTIVE) || (i_sourcecfg[i].ddf.nd.sm == APLIC_SM_DETACHED)) begin
+                rectified_src[i] = 0;
+            end else begin
+                rectified_src[i] = i_sources[i] ^ i_sourcecfg[i][0];
+            end
         end
     end
-end
 
-assign o_rectified_src = rectified_src_q;
+    assign o_rectified_src = rectified_src_q;
 
-/** Select the new interrupt */
-for (genvar i = 1 ; i < NR_SRC; i++) begin    
-    assign new_intp[i/32][i%32] = (new_intp_src[i]) ? (rectified_src[i] & ~rectified_src_q[i]) : rectified_src[i];
-end
+    /** Select the new interrupt */
+    for (genvar i = 1 ; i < AplicCfg.NrSources; i++) begin    
+        assign new_intp[i/32][i%32] = (new_intp_src[i]) ? (rectified_src[i] & ~rectified_src_q[i]) : rectified_src[i];
+    end
 
 // =============== Choose logic to set pend ================
     always_comb begin
-        for (int i = 1; i < NR_SRC; i++) begin
+        for (int i = 1; i < AplicCfg.NrSources; i++) begin
             case (intp_pen_src[i])
                 DETACHED_C: begin
                     o_setip[i/32][i%32] = i_sugg_setip[i/32][i%32] & i_active[i/32][i%32] & ~(i_claimed[i/32][i%32]);
@@ -124,8 +124,8 @@ end
                     o_setip[i/32][i%32] = new_intp[i/32][i%32] & i_active[i/32][i%32];
                 end
                 LEVELXDM1_C: begin
-                    o_setip[i/32][i%32] = (new_intp[i/32][i%32] | i_sugg_setip[i/32][i%32]) & i_active[i/32][i%32] & 
-                                        ~(~new_intp[i/32][i%32] | i_claimed[i/32][i%32]);
+                    o_setip[i/32][i%32] = (new_intp[i/32][i%32] | (i_sugg_setip[i/32][i%32] & rectified_src[i])) & 
+                                           i_active[i/32][i%32] & ~(~new_intp[i/32][i%32] | i_claimed[i/32][i%32]);
                 end
                 default: begin
                     o_setip[i/32][i%32] = 1'b0;

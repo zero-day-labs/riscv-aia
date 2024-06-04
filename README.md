@@ -4,49 +4,92 @@
 
 This work is licensed under a Apache-2.0 License and Solderpad Hardware License v2.1 (Apache-2.0 WITH SHL-2.1). See the [Apache LICENSE](./LICENSE.Apache) and [Solderpad LICENSE](./LICENSE.Solderpad) files for details.
 
-## Disclaimer
-This is a work in progress.
+## Table of Contents
 
-## About RISC-V AIA
-Nowadays, the de facto interrupt controller in the RISC-V system is the Platform Level Interrupt Controller (PLIC). However, the PLIC specification, as it is, presents several limitations in terms of scalability and feature-richness. Among these limitations, we highlight: a large amount of physical address space used, and the sharing of M-mode and S-mode global registers, creating a possible security breach. The PLIC does not support interrupts through Message Signal Interrupts (MSI). Also, the Interrupt Request (IRQ) line sensing configuration is not allowed. Lastly, the PLIC does not provide any means to support virtualization.
+- [About this Project](#about-this-project)
+- [Repository Structure](#repository-structure)
+- [AIA IP Microarchitecture](#aia-ip-microarchitecture)
+   - [About IMSIC IP](#about-imsic-ip)
+- [Module Parameters](#module-parameters)
+- [Demo](#demo)
+- [Tools and versions](#tools-and-versions)
+- [Roadmap and Contributions](#roadmap-and-contributions)
 
-In response to identified deficiencies in the PLIC, the RISC-V community has undertaken the development of a new interrupt controller specification. The RISC-V Advanced Interrupt Architecture (AIA) is the novel reference specification for interrupt-handling functionality. The specifications were recently ratified and are paving the way for integration in new RISC-V SoC designs.
+## About this Project
+This repository contains the SystemVerilog RTL implementation of an RISC-V Advanced Interrupt Architecture, compliant with the [RISC-V AIA Specification v1.0](https://github.com/riscv/riscv-aia).
 
-AIA specification consists in:
-1. An extension to the RISC-V privilege specification (Smaia and Ssaia);
-2. Two standard interrupt controllers for RISC-V systems:
-   a. Advanced Platform-Level Interrupt Controller (APLIC)
-   b. Incoming Message-Signalled Interrupt Controller (IMSIC);
-3. Requirements on other system components (e.g., IOMMU).
+:warning: **Disclaimer**: The IP is in constant development. We functionally validated the RISC-V AIA IP within a CVA6-based SoC with virtualization support. However, the IP is not formally verified. Thus, it is very likely to have bugs.
 
-The Figure bellow shows the current interrupt controller model. It can be observed that wired sources are connected to the
-PLIC, which for instance will be in charge of determining the interrupt prioritization and notify the CPU, by wire,
-when an interrupt is available.
+## **Repository Structure**
 
-![Current interrupt controller model.](./doc/PLIC-SoC.png)
+- **Documentation ([doc/](./doc/)):**
+In the *doc* folder you can find various diagrams and graphical resources illustrating the internal design of the different components comprising the AIA IP.
 
-A SoC that implements the AIA specification will look like the Figure bellow. In scenarios where a platform opts not to incorporate an IMSIC, the absence of MSI channels results in the external interrupt controller responsibilities being assumed by the APLIC.
+- **RTL source files ([rtl/](./rtl/)):**
+SystemVerilog source files that implement the IP, organized according to hardware blocks defined for the microarchitecture.
 
-![AIA interrupt controller model.](./doc/AIA-SoC.png)
+- **Required SV utils ([include/](./rtl/utils/)):**
+SystemVerilog utils files required to build the IP.
 
-## Repository Structure
+- **Required SV packages ([packages/](./rtl/packages/)):**
+SystemVerilog packages used to build the IP.
 
-### Documentation (doc)
-In the [documentation](doc/README.md) folder you can find information about APLIC and IMSIC IPs. How to integrate IP into a RISC-V platform, the interfacing of the hardware blocks, and how they are made up.
+- **Cocotb tests ([vendor/](./test/)):**
+The *test* folder contains the tests developed using cocotb framework to functionally validate part of the RISC-V AIA IPs' functionalities (APLIC IP, IMSIC IP and AIA IP).
 
-### RTL
-The rtl folder houses all the modules that make up each of the IPs.
+- **Standalone components ([vendor/](./vendor/)):**
+The *vendor* folder holds SystemVerilog source files of all standalone RTL modules used in the AIA IP.
 
-### Tests
-Under the tests folder, you can find unit tests of IPs intergration. The tests can easily be replicated by doing make inside the desired test.
+## **AIA IP Microarchitecture**
+The RISC-V AIA IP developed in this project can, through parameterization/defines, have 3 major microarchitectures, which we call:
+- **APLIC IP only** 
+Implements the APLIC IP in direct mode.
 
----
+- **Distibuted AIA IP**
+The distributed AIA implements the APLIC IP in MSI mode and the IMSICs are expected to be implemented close to the cores.
 
-**NOTE**
+- **Emebedded AIA IP**
+Embedded AIA IP implements IMSIC IP within APLIC IP in MSI mode. This microarchitecture is especially useful for computing platforms such as embedded and mixed criticality systems.
 
-To ensure accurate test reproduction, it is crucial to verify the versions of the tools being utilized (verilator and cocotb). Failure to do so may result in inconsistencies and unreliable test results.
+### **About IMSIC IP**
+The IMSIC IP developed in this project can take on 3 microarchitectures depending on its configuration. 
 
----
+- **Vanilla IMSIC IP**
+This IP appears when the IMSIC is configured for 1 hart only.
+
+- **IMSIC Island IP**
+If the IMSIC is configured to have several harts, the IMSIC groups them together, organizing them in memory as specified by the specification, and exposing only one communication interface to the bus and several configuration interfaces (as many as the number of IMSICs on the island).
+
+- **Embedded IMSIC IP**
+This IP only appears when the AIA is configured as embedded. This IMSIC IP is the IMSIC Island with one more communication interface, used by the APLIC to send pending and enabled interrupts.
+
+## **Module Parameters**
+In order to create a modular, scalable and customizable AIA IP, we defined a set of design parameters, as detailed in the Table below. The purpose of these parameters is to configure microarchitectural properties of internal AIA structures. The AIA IP configurations all take place in the file `rtl/package/aia_pkg.sv`
+
+**:warning: Note**: The IMSIC IP configurations in `rtl/package/aia_pkg.sv` are for IMSIC Island or Embedded IMSIC microarchitecture (if AIA is configured as Embedded). If you want to use IMSIC Vanilla, you must place it on the SoC, next to the hart, configured following the structure in `rtl/packages/imsic_pkg.sv` but with only 1 hart. In this case, AIA must be configured as Distributed.
+
+| Parameter | Module| Function | Possible values |
+| ------------- | ------------- | ------------- | ------------- |
+|***UserAplicMode*** | APLIC | Defines the APLIC opertion mode | DOMAIN_IN_DIRECT_MODE, DOMAIN_IN_MSI_MODE |
+|***UserAiaType***   | APLIC |Defines the type of AIA IP that will be instantiated. Ignored the *UserAplicMode* is set to DOMAIN_IN_DIRECT_MODE | AIA_DISTRIBUTED, AIA_EMBEDDED |
+|***UserNrSources*** | APLIC | Defines the number of interrupt sources to be implemented in the APLIC IP | [1, 1024] |
+|***UserNrHarts***   | APLIC | Defines the number of interrupt harts (IDCs structures) to be implemented in the APLIC IP. Ignored the *UserAplicMode* is set to DOMAIN_IN_MSI_MODE  | [1, N] |
+|***UserNrDomains*** | APLIC | Defines the number of interrupt domains to implement. Each domain must be configured individually. The APLIC IP already implements internally a machine mode interrupt domain | [1, N] |
+|***UserNrDomainsM*** | APLIC | Defines the number of machine-mode interrupt domains based on the individual configuration | [1, N]  |
+|***UserMinPrio*** | APLIC | Defines the minimal interrupt priority | [1 - N] |
+| ***id*** | APLIC Domain | Defines the APLIC domain ID | [1 - N] | 
+| ***ParentID*** | APLIC Domain | Defines the APLIC domain parent ID. Set it to 0 if the parent is the RootDomain | [0 - N] |
+| ***ChildIdx*** | APLIC Domain | Defines an array with all the child interrupt domains of this domain | {0, ...} |
+| ***LevelMode*** | APLIC Domain | Defines the interrupt domain level | DOMAIN_IN_M_MODE, DOMAIN_IN_S_MODE  |
+| ***Addr*** | APLIC Domain | Defines the interrupt domain base address | 32 bit long value  |
+| ***UserXLEN*** | IMSIC | Defines the IMSIC XLEN (dependent on the hart) | 32, 64 |
+| ***UserNrSourcesImsic*** | IMSIC |  Defines the number of interrupt sources to be implemented in the IMSIC IP | [64, 2048] |
+| ***UserNrHartsImsic*** | IMSIC | Defines the number of interrupt harts (number of IMSICs) to be implemented in the IMSIC island IP | [0 - N] |
+| ***UserNrVSIntpFiles*** | IMSIC | Defines the number of VS files to be implemented in each IMSIC | [0 - N] |
+
+
+## Demo
+Comming soon
 
 ## Tools and Versions
 To run the test make sure you are using the right versions of cocotb and verilator. Currently cocotb only supports Verilator 5.006 and later. See cocotb [Simulator Support](https://docs.cocotb.org/en/stable/simulator_support.html) for more information.
@@ -55,67 +98,26 @@ To run the test make sure you are using the right versions of cocotb and verilat
 | ------------ | ----------- |
 | Cocotb       | 1.8.0       |
 | Verilator    | 5.006       |
-| perl         |  |
-| python3      |  |
-| autoconf     |  |
-| g++          |  |
-| flex         |  |
-| ccache       |  |
-| bison        | 3.5.1       |
-
-## Project Status
+| perl         | 5.38.2      |
+| python3      | 3.12.3      |
+| autoconf     | 2.69        |
+| g++          | 13.2.1      |
+| flex         | 2.6.4       |
+| ccache       | 4.9.1       |
+| bison        | 3.8.2       |
 
 ---
 
-**NOTE**
+**:warning: NOTE**
 
-The AIA IP presented in this repository was validated on a CVA6-based SoC, single core. We build the following SoC configurations:
-
-1. Replace the PLIC for the APLIC (scalable and minimal version) in direct mode;
-2. Implemented the full AIA IP - APLIC in msi mode (scalable and minimal version) + IMSIC with 3 interrupt files (M, S, and VS) + Smaia/Ssaia core extentions;
-
-We successfully ran Linux vanilla on both configurations, firstly directly on hardware and then atop of [Bao hypevisor](https://github.com/bao-project/bao-hypervisor).
+To ensure accurate test reproduction, it is crucial to verify the versions of the tools being utilized (verilator and cocotb). Failure to do so may result in inconsistencies and unreliable test results.
 
 ---
 
-| AIA Module  | Status | Documentation |
-|-------------|--------|---------------|
-| APLIC (Scalable) | Done | [here](./doc/aplic/README.md) |  
-| APLIC (Minimal) | Done |  |
-| IMSIC | Done | [here](./doc/imsic/README.md) |
-| Smaia/Ssaia | WiP    | |
-| Scripts | WiP | |
+## **Roadmap and Contributions**
 
-### APLIC
+This AIA IP still has plenty room for growth and improvements. We encourage contributions in many ways (but not limited to):
 
-#### Scalable
-This APLIC implementation focus in high modularity and saclability. It implements a full APLIC domain, that can be instantiated using the parameters to define the domain level (M or S), number of interrupt sources, number of IDCs, if the domain is a LEAF domain, and the APLIC address in the SoC adress space. This is ideal for testing different APLIC configurations with more than one M domain and one S domain. Its versability allows developers to build in just a few minutes any APLIC microarchitecture configuration. The APLIC functioning mode (direct mode or MSI mode) is defined using the defines in aplic_defines.svh so we can implement just the necessary interface for each case. In this repository can be found an APLIC configuration using this APLIC version. The configurations consist of a M and S domain.
-
-#### Minimal 
-This APLIC implementation focus on lower resource usage, while providing some APLIC configurability. Our minimal APLIC implements only two domains (M and S). From the AIA specification can be read (section 4.5): *APLIC implementations can exploit the fact that each source is ultimately active in only one domain*. Thus, this minimal version implements only one domain and relies on logic to mask the interrupt to the correct domain. 
-
-This implementation allows the following IP configurability: number of interrupt source lines, minimal priority, and number of IDCs.
-
-### IMSIC
-The IMSIC IP allows the following configurations: number of interrupt sources, number of interrupt files (at least 2 (M and S) are mandatory).
-
-### Smaia/Ssaia
-The AIA core extentions were implemented in the CVA6 core. Implementation can be found [here](https://github.com/zero-day-labs/cva6/tree/wip/aia). The major interrupts priority configuration feature was not implemented yet. The major interrupts priorities are the default priorities defined in AIA specification.
-
-### Scripts
-We are currently developing a set of scripts that provide developers with two essential capabilities. Firstly, these scripts enable developers to build aplic register maps tailored to their specific problem. This feature allows for a customized configuration of the register maps, ensuring alignment with the requirements of their project.
-
-Secondly, the scripts automate the process of building an APLIC configuration, specifically targeting the scalable version. With this automation, developers can effortlessly construct an APLIC configuration that can easily scale to accommodate varying needs and evolving project demands.
-
-By leveraging these scripts, developers can streamline the setup and configuration of APLIC, saving valuable time and effort.
-
-## Take a look at our work
-
-* RISC-V Summit Europe 2023 [Extended Abstract](https://riscv-europe.org/media/proceedings/posters/2023-06-08-Francisco-MARQU%C3%89S-DA-COSTA-abstract.pdf)
-* RISC-V Summit Europe 2023 [Poster](https://riscv-europe.org/media/proceedings/posters/2023-06-08-Francisco-MARQU%C3%89S-DA-COSTA-poster.pdf)
-
-## Next Steps
-- [ ] Re-structure the project (Currently working on it);
-- [ ] Clean, improve and add new tests;
-- [ ] Write APLIC minimal documentation;
-- [ ] Build a quad-core SoC (based on CVA6 core);
+- Improving the current design. Increasing efficiency, modularity, scalability, etc;
+- Identifying errors or bugs in the implementation, by means of formal verification, or through the integration of the IP in other systems;
+- Adding support for architectural features included in the RISC-V AIA specification, and not included in this design.
