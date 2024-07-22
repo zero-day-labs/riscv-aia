@@ -16,7 +16,7 @@ AXI_FOLDER = $(PWD)/../../vendor
 TEST_FOLDER = $(currdir) 
 SRC_FOLDER = $(PWD)/../../rtl
 
-IEAIA_FOLDER = $(SRC_FOLDER)/ieaia_dev
+IEAIA_FOLDER = $(SRC_FOLDER)
 
 # AXI vendor files
 VERILOG_SOURCES = $(AXI_FOLDER)/reg_intf_pkg.sv

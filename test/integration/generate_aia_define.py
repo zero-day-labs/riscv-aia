@@ -164,7 +164,7 @@ def write_to_file (file_name, macro, write_mode, varible):
 
 def main():
     # Read the content of the file
-    with open("../../rtl/ieaia_dev/package/aia_pkg.sv", 'r') as f:
+    with open("../../rtl/package/aia_pkg.sv", 'r') as f:
         file_content = f.readlines()
 
     # Parse the UserAplicMode and domain values
