@@ -83,8 +83,8 @@ import aplic_pkg::*;
   output logic                        [AplicCfg.NrSources-1:1]         o_target_we,
   `ifdef MSI_MODE
   // Register: genmsi
-  genmsi_t                            i_genmsi            [AplicCfg.NrDomains-1:0],
-  genmsi_t                            o_genmsi            [AplicCfg.NrDomains-1:0],
+  input  genmsi_t                     i_genmsi            [AplicCfg.NrDomains-1:0],
+  output genmsi_t                     o_genmsi            [AplicCfg.NrDomains-1:0],
   output logic                        o_genmsi_we         [AplicCfg.NrDomains-1:0],
   `elsif DIRECT_MODE
   // Register: idelivery
