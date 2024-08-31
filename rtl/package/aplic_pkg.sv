@@ -60,7 +60,7 @@ import aplic_domain_pkg::*;
             id: shortint'(RootdomainID),
             ParentID: int'(-1),
             NrChilds: shortint'(1),
-            ChildsIdx: '{default: '0, 0:1},
+            ChildsIdx: '{0, 1},
             LevelMode: DOMAIN_IN_M_MODE,
             Addr: 32'hc000000
         };
@@ -137,7 +137,7 @@ import aplic_domain_pkg::*;
     localparam SOURCECFG_NOT_DELEGATED = 0;
     localparam SOURCECFG_DELEGATED = 1;
 
-    function bit is_valid_aplic_sourcecfg_sm(input logic[2:0] value);
+    function automatic bit is_valid_aplic_sourcecfg_sm(input logic[2:0] value);
         case (value)
             APLIC_SM_INACTIVE,
             APLIC_SM_DETACHED,

@@ -119,7 +119,7 @@ import aplic_pkg::*;
     end
   endfunction
 
-  function domain_idx_t search_child_idx (input domain_idx_t domain_idx, input domain_idx_t child_idx);
+  function automatic domain_idx_t search_child_idx (input domain_idx_t domain_idx, input domain_idx_t child_idx);
     search_child_idx = 0;
     for (int j = 0; j < AplicCfg.NrDomains; j++) begin
       for (shortint i = 0; i < AplicCfg.DomainsCfg[j].NrChilds; i++) begin

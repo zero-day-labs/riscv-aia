@@ -9,7 +9,7 @@ localparam NrChildsMax  = 2;
         shortint                        id;
         int                             ParentID;
         shortint                        NrChilds;
-        logic [9:0][NrChildsMax-1:0]    ChildsIdx;
+        logic [NrChildsMax-1:0][9:0]    ChildsIdx;
         logic                           LevelMode;
         logic [31:0]                    Addr;
     } domain_cfg_t;
