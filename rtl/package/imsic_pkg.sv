@@ -25,16 +25,20 @@ import aia_pkg::*;
     typedef logic [UserXLEN-1:0]                                 imsic_data_t;
     typedef logic [UserNrVSInptFilesW:0]                         imsic_vgein_t;
 
+    /*** User Priority Mask extensions ***/
+    typedef logic [UserNrSourcesImsicW-1:0] imsic_ueithreshold_t;
+
     /*****************************************************************
     *         CSR Channel (RISCV Hart <==csr_channel==> IMSIC)       *
     ******************************************************************/
     typedef struct packed {
-        logic [1:0]     priv_lvl;
-        imsic_vgein_t   vgein;
-        logic [31:0]    imsic_addr;
-        imsic_data_t    imsic_data;
-        logic           imsic_we;
-        logic           imsic_claim;
+        logic [1:0]             priv_lvl;
+        imsic_vgein_t           vgein;
+        imsic_ueithreshold_t    ueithreshold;
+        logic [31:0]            imsic_addr;
+        imsic_data_t            imsic_data;
+        logic                   imsic_we;
+        logic                   imsic_claim;
     } csr_channel_to_imsic_t;
 
     typedef struct packed {

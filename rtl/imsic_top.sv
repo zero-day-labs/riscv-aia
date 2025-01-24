@@ -205,12 +205,21 @@ import imsic_pkg::*;
                         acc[w][k] = i*NR_INTP_PER_REG;
                         if ((eie_q[w][(k*NR_REG)+i][j] && eip_q[w][(k*NR_REG)+i][j]) &&
                             ((eithreshold_q[w][k] == 0) || ((acc[w][k][NR_SRC_LEN-1:0]+j[NR_SRC_LEN-1:0]) < eithreshold_q[w][k]))) begin
-                            xtopei[w][k]           = j[NR_SRC_LEN-1:0] + acc[w][k][NR_SRC_LEN-1:0];
-                            /** If delivery is enable for this intp file, notify the hart */
-                            if (eidelivery_q[w][k]) begin
-                                xeip_targets[w][k] = 1'b1;
+
+                            // S-mode interrupts are masked by U-mode if:
+                            if ((csr_channel_i[w].ueithreshold == '0)   ||      // ueithreshold != '0
+                                (k == M_FILE)                           ||      // not M-mode IF
+                                ((acc[w][k][NR_SRC_LEN-1:0]+j[NR_SRC_LEN-1:0])  // Int ID >= ueithreshold
+                                    < csr_channel_i[w].ueithreshold)) begin
+                                        
+                                xtopei[w][k] = j[NR_SRC_LEN-1:0] + acc[w][k][NR_SRC_LEN-1:0];
+
+                                /** If delivery is enable for this intp file, notify the hart */
+                                if (eidelivery_q[w][k]) begin
+                                    xeip_targets[w][k] = 1'b1;
+                                end
+                                break;
                             end
-                            break;
                         end
                     end
                 end
