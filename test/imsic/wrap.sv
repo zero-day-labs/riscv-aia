@@ -68,7 +68,7 @@ always_comb begin
 
 end
 
-axi_lite_write_master#(
+axi4_lite_write_master#(
     .AXI_ADDR_WIDTH     ( AXI_ADDR_WIDTH    ),
     .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH    )
 ) axi_lite_write_master_i (

@@ -82,7 +82,7 @@ import aplic_pkg::*;
     assign req_msi = req_msi_aplic;
     assign resp_msi_aplic = resp_msi;
 
-    imsic_island_top #(
+    imsic_top #(
         .ImsicCfg               ( ImsicCfg              ),
         .axi_req_t              ( ariane_axi::req_t     ),
         .axi_resp_t             ( ariane_axi::resp_t    )
@@ -99,7 +99,7 @@ import aplic_pkg::*;
     assign resp_msi_plat = resp_msi;
     `endif
 
-    axi_lite_write_master#(
+    axi4_lite_write_master#(
         .AXI_ADDR_WIDTH     ( ProtocolCfg.AXI_ADDR_WIDTH    ),
         .AXI_DATA_WIDTH     ( ProtocolCfg.AXI_DATA_WIDTH    )
     ) axi_lite_write_master_i (
