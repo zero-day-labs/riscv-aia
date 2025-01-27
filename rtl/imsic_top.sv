@@ -202,9 +202,9 @@ import imsic_pkg::*;
                 acc[w][k]              = '0;
                 for (int i = 0; i < NR_REG; i++) begin
                     for (int j = 0; j < NR_INTP_PER_REG; j++) begin
+                        acc[w][k] = i*NR_INTP_PER_REG;
                         if ((eie_q[w][(k*NR_REG)+i][j] && eip_q[w][(k*NR_REG)+i][j]) &&
-                            ((eithreshold_q[w][k] == 0) || (j[NR_SRC_LEN-1:0] < eithreshold_q[w][k]))) begin
-                            acc[w][k]              = i*NR_INTP_PER_REG;
+                            ((eithreshold_q[w][k] == 0) || ((acc[w][k][NR_SRC_LEN-1:0]+j[NR_SRC_LEN-1:0]) < eithreshold_q[w][k]))) begin
                             xtopei[w][k]           = j[NR_SRC_LEN-1:0] + acc[w][k][NR_SRC_LEN-1:0];
                             /** If delivery is enable for this intp file, notify the hart */
                             if (eidelivery_q[w][k]) begin
