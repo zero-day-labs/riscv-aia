@@ -5,7 +5,7 @@
 * Author: F.Marques <fmarques_00@protonmail.com>
 */
 
-module imsic_island_top 
+module imsic_top 
 import imsic_protocol_pkg::*;
 import imsic_pkg::*;
 #(

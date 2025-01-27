@@ -17,7 +17,7 @@ import imsic_protocol_pkg::*;
     parameter type                 axi_resp_t              = ariane_axi::resp_t,
     // DO NOT EDIT BY PARAMETER
     parameter int                  NR_REG                  = (AplicCfg.NrSources-1)/32,
-    parameter int                  IMSICS_LEN              = $clog2(ImsicCfg.NrHarts)
+    parameter int                  IMSICS_LEN              = (ImsicCfg.NrHarts == 1) ? 1 : $clog2(ImsicCfg.NrHarts)
 ) (
     input   logic                                              i_clk,
     input   logic                                              ni_rst,
@@ -87,7 +87,7 @@ import imsic_protocol_pkg::*;
             assign o_forwarded_valid    = forwarded_valid;
             assign o_intp_forwd_id      = forwarded_intp_id;
 
-            imsic_island_top #(
+            imsic_top #(
                 .ImsicCfg               ( ImsicCfg              ),
                 .ProtocolCfg            ( ProtocolCfg           ),             
                 .axi_req_t              ( axi_req_t             ),
@@ -174,7 +174,7 @@ import imsic_protocol_pkg::*;
             // -----------------------------
             // AXI Interface
             // -----------------------------
-            axi_lite_write_master#(
+            axi4_lite_write_master #(
                 .AXI_ADDR_WIDTH ( ProtocolCfg.AXI_ADDR_WIDTH    ),
                 .AXI_DATA_WIDTH ( ProtocolCfg.AXI_DATA_WIDTH    ),
                 .axi_req_t      ( axi_req_t                     ),

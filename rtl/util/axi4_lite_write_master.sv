@@ -8,7 +8,7 @@
 *               
 * Notes: This module will be replaced in the future;
 */ 
-module axi_lite_write_master #(
+module axi4_lite_write_master #(
     parameter int unsigned AXI_ADDR_WIDTH = 64,
     parameter int unsigned AXI_DATA_WIDTH = 64,
     parameter type         axi_req_t      = ariane_axi::req_t ,
