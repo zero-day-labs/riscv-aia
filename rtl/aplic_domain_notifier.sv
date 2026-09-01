@@ -205,41 +205,135 @@ import imsic_protocol_pkg::*;
             end
         `endif
     `elsif DIRECT_MODE
-        logic  [AplicCfg.NrHarts-1:0] has_valid_intp   [AplicCfg.NrDomains-1:0];
-        iid_t  [AplicCfg.NrHarts-1:0] intp_id          [AplicCfg.NrDomains-1:0];
-        prio_t [AplicCfg.NrHarts-1:0] intp_prio        [AplicCfg.NrDomains-1:0];
-        prio_t [AplicCfg.NrHarts-1:0] prev_higher_prio [AplicCfg.NrDomains-1:0];
 
-        always_comb begin
-            // We should revisit this implementation
-            for (int i = 0; i < AplicCfg.NrDomains; i++) begin
-                has_valid_intp[i]      = '0;
-                intp_id[i]             = '0;
-                intp_prio[i]           = '0;
-                prev_higher_prio[i]    = '1;
-                o_topi_sugg[i]         = '0;
-                o_topi_update[i]       = '0;
-                for (int j = 0; j < AplicCfg.NrHarts; j++) begin
-                    for (int w = 1; w < AplicCfg.NrSources; w++) begin
-                        if (i_setip_q[w/32][w%32] && i_setie_q[w/32][w%32] &&
-                            (i_intp_domain[w] == intp_domain_t'(i)) && (i_target_q[w].hi == hart_index_t'(j)) && 
-                            (i_target_q[w].dmdf.df.iprio < prev_higher_prio[i][j])) begin
-                            intp_id[i][j]          = iid_t'(w);
-                            intp_prio[i][j]        = i_target_q[w].dmdf.df.iprio;
-                            prev_higher_prio[i][j] = intp_prio[i][j];
-                        end
-                    end
+        typedef struct packed {
+            logic  valid;
+            prio_t prio;
+            iid_t  iid;
+        } topi_candidate_t;
+
+        localparam int unsigned NR_TOPI_CANDIDATES = AplicCfg.NrSources - 1;
+        localparam int unsigned TOPI_TREE_LEVELS = (NR_TOPI_CANDIDATES <= 1) ? 0 : $clog2(NR_TOPI_CANDIDATES);
+
+        // Round the number of interrupt sources up to a power of two.
+        localparam int unsigned TOPI_TREE_LEAVES = 1 << TOPI_TREE_LEVELS;
+
+        /*
+         * Tree representation:
+         *
+         *                  [1]
+         *              /         \
+         *            [2]         [3]
+         *           /   \       /   \
+         *         ...   ...   ...   ...
+         *
+         * Internal nodes:
+         *     1 .. TOPI_TREE_LEAVES-1
+         *
+         * Leaf nodes:
+         *     TOPI_TREE_LEAVES .. 2*TOPI_TREE_LEAVES-1
+         *
+         * Index zero is not used.
+         */
+        topi_candidate_t topi_tree [AplicCfg.NrDomains-1:0] [AplicCfg.NrHarts-1:0] [2*TOPI_TREE_LEAVES-1:1];
+
+        logic [AplicCfg.NrHarts-1:0]    has_valid_intp  [AplicCfg.NrDomains-1:0];
+        logic [AplicCfg.NrHarts-1:0]    eintp_cpu_q     [AplicCfg.NrDomains-1:0];
+
+        /*
+         * Select the higher-priority candidate.
+         *
+         * A lower numerical iprio value means a higher interrupt
+         * priority.
+         *
+         * When priorities are equal, lhs is selected. Because the tree
+         * is built with lower interrupt IDs on the left, this preserves
+         * the original lower-interrupt-ID tie-breaking behavior without
+         * requiring an additional IID comparator.
+         */
+        function automatic topi_candidate_t select_topi_candidate(
+            input topi_candidate_t lhs, input topi_candidate_t rhs
+        );
+            begin
+                if (!lhs.valid) begin
+                    select_topi_candidate = rhs;
+                end else if (!rhs.valid) begin
+                    select_topi_candidate = lhs;
+                end else if (rhs.prio < lhs.prio) begin
+                    select_topi_candidate = rhs;
+                end else begin
+                    select_topi_candidate = lhs;
                 end
             end
+        endfunction
 
-            for (int i = 0; i < AplicCfg.NrDomains; i++) begin
-                for (int j = 0; j < AplicCfg.NrHarts; j++) begin
-                    if((intp_id[i][j] != '0) && ((intp_prio[i][j] < i_ithreshold[i][j]) || 
-                    (i_ithreshold[i][j] == '0))) begin
-                        o_topi_sugg[i][j].iid = intp_id[i][j];
-                        o_topi_sugg[i][j].prio = intp_prio[i][j];
-                        o_topi_update[i][j]  = 1'b1;
-                        has_valid_intp[i][j] = 1'b1;
+        /*
+         * Construct one candidate at every real leaf.
+         *
+         * Leaf zero represents interrupt source 1, leaf one represents
+         * source 2, and so on. Consequently, the left side of every
+         * subtree always contains lower interrupt IDs.
+         */
+        for (genvar d = 0; d < AplicCfg.NrDomains; d++) begin : gen_topi_domain
+            for (genvar h = 0; h < AplicCfg.NrHarts; h++) begin : gen_topi_hart
+                for (genvar l = 0; l < TOPI_TREE_LEAVES; l++) begin : gen_topi_leaf
+
+                    if (l < NR_TOPI_CANDIDATES) begin
+                        localparam int unsigned SOURCE_ID = l + 1;
+
+                        assign topi_tree [d][h][TOPI_TREE_LEAVES + l].valid =
+                                i_setip_q[SOURCE_ID/32][SOURCE_ID%32] && i_setie_q[SOURCE_ID/32][SOURCE_ID%32] &&
+                                (i_intp_domain[SOURCE_ID] == intp_domain_t'(d)) &&
+                                (i_target_q[SOURCE_ID].hi == hart_index_t'(h));
+                        assign topi_tree [d][h][TOPI_TREE_LEAVES + l].prio =
+                                i_target_q[SOURCE_ID].dmdf.df.iprio;
+                        assign topi_tree[d][h][TOPI_TREE_LEAVES + l].iid = iid_t'(SOURCE_ID);
+
+                    end else begin : gen_padding_leaf
+                        /*
+                         * Pad the tree to a power of two. Invalid leaves
+                         * can never beat a valid candidate.
+                         */
+                        assign topi_tree [d][h][TOPI_TREE_LEAVES + l] = '0;
+                    end
+                end
+
+                /*
+                 * Build the balanced reduction tree.
+                 *
+                 * Each node depends only on two children at the next
+                 * level, giving logarithmic rather than linear depth.
+                 */
+                for (genvar n = 1; n < TOPI_TREE_LEAVES; n++) begin : gen_topi_node
+
+                    assign topi_tree [d][h][n] = select_topi_candidate(
+                                topi_tree[d][h][2*n],
+                                topi_tree[d][h][2*n + 1]);
+                end
+            end
+        end
+
+        /*
+         * The root of each domain/hart tree is node 1.
+         * Apply the threshold after selecting the best candidate.
+         */
+        always_comb begin : topi_output_logic
+            for (int d = 0; d < AplicCfg.NrDomains; d++) begin
+
+                o_topi_sugg[d]   = '0;
+                o_topi_update[d] = '0;
+                has_valid_intp[d] = '0;
+
+                for (int h = 0; h < AplicCfg.NrHarts; h++) begin
+
+                    if (topi_tree[d][h][1].valid &&
+                        ((i_ithreshold[d][h] == '0) || 
+                         (topi_tree[d][h][1].prio < i_ithreshold[d][h]))) begin
+
+                        o_topi_sugg[d][h].iid = topi_tree[d][h][1].iid;
+                        o_topi_sugg[d][h].prio = topi_tree[d][h][1].prio;
+                        o_topi_update[d][h] = 1'b1;
+                        has_valid_intp[d][h] = 1'b1;
                     end
                 end
             end
@@ -248,8 +342,25 @@ import imsic_protocol_pkg::*;
         /** CPU line logic*/
         for (genvar i = 0; i < AplicCfg.NrDomains; i++) begin
             for (genvar j = 0; j < AplicCfg.NrHarts; j++) begin
-                assign o_eintp_cpu[i][j] =  i_domaincfgIE[i] & i_idelivery[i][j] & 
-                                            (has_valid_intp[i][j] | i_iforce[i][j]);
+                assign o_eintp_cpu[i][j] =  eintp_cpu_q[i][j];
+            end
+        end
+
+        always_ff @( posedge i_clk or negedge ni_rst ) begin
+            if (!ni_rst) begin
+                for (int unsigned i = 0; i < AplicCfg.NrDomains; i++) begin
+                    for (int unsigned j = 0; j < AplicCfg.NrHarts; j++) begin
+                        eintp_cpu_q[i][j] <=  1'b0;
+                    end
+                end
+            end
+            else begin
+                for (int unsigned i = 0; i < AplicCfg.NrDomains; i++) begin
+                    for (int unsigned j = 0; j < AplicCfg.NrHarts; j++) begin
+                        eintp_cpu_q[i][j] <=  (i_domaincfgIE[i] & i_idelivery[i][j] & 
+                                                (has_valid_intp[i][j] | i_iforce[i][j]));
+                    end
+                end
             end
         end
     `endif
