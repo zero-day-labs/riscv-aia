@@ -125,7 +125,7 @@ import aplic_pkg::*;
                 end
                 LEVELXDM1_C: begin
                     o_setip[i/32][i%32] = (new_intp[i/32][i%32] | (i_sugg_setip[i/32][i%32] & rectified_src[i])) & 
-                                           i_active[i/32][i%32] & ~(~new_intp[i/32][i%32] | i_claimed[i/32][i%32]);
+                                           i_active[i/32][i%32] & ~(~rectified_src[i] | i_claimed[i/32][i%32]);
                 end
                 default: begin
                     o_setip[i/32][i%32] = 1'b0;

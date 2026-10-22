@@ -128,7 +128,7 @@ import imsic_protocol_pkg::*;
 
                 for (int i = 1 ; i < AplicCfg.NrSources ; i++) begin
                     /** If the interrupt is pending and enabled in its domain*/
-                    if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32] && i_domaincfgIE[i_intp_domain[i]] && !axi_busy_q) begin
+                    if (i_setip_q[i/32][i%32] && i_setie_q[i/32][i%32] && i_domaincfgIE[i_intp_domain[i]] && !axi_busy) begin
                         /** Save the APLIC interrupt ID, so we can clear it in register controller*/
                         intp_forwd_id_d = eiid_t'(i);
                         /** Get the IMSIC interrut ID of the APLIC interrupt ID we want to send to IMSIC*/
@@ -169,7 +169,7 @@ import imsic_protocol_pkg::*;
 
             assign o_genmsi_sent        = genmsi_sent;
             assign o_forwarded_valid    = forwarded_valid;
-            assign o_intp_forwd_id      = intp_forwd_id_q;
+            assign o_intp_forwd_id      = intp_forwd_id_d;
 
             // -----------------------------
             // AXI Interface
