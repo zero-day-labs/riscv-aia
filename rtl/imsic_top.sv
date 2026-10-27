@@ -200,7 +200,9 @@ import imsic_pkg::*;
                 xtopei[w][k]           = '0;
                 xeip_targets[w][k]     = '0;
                 acc[w][k]              = '0;
-                for (int i = 0; i < NR_REG; i++) begin
+                // Search register words from high to low: break exits only the inner loop.
+                // The final match must have the lowest interrupt identity.
+                for (int i = NR_REG - 1; i >= 0; i--) begin
                     for (int j = 0; j < NR_INTP_PER_REG; j++) begin
                         acc[w][k] = i*NR_INTP_PER_REG;
                         if ((eie_q[w][(k*NR_REG)+i][j] && eip_q[w][(k*NR_REG)+i][j]) &&
